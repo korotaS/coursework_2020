@@ -1,10 +1,11 @@
-# Reinforcement Learning: Options framework
-Implementation of the Options framework, using Q-learning algorithm.
-
-# Paper
-Between MDPs and semi-MDPs: A framework for temporal abstraction in reinforcement learning [[Paper]](http://www-anw.cs.umass.edu/~barto/courses/cs687/Sutton-Precup-Singh-AIJ99.pdf)
+# Reinforcement Learning: Options
+Реализация фреймворка Options для среды GridWorld.
+Оригинальный репозиторий: [[q-learning-with-options]](https://github.com/s-mawjee/q-learning-with-options)
 
 # Dependencies
 - Numpy
 - Matplotlib
 - Gym
+
+# Запуск
+Клонировать репозиторий и запустить train.py (в методе main() устанавливаются параметры запуска в переменной parameters).
