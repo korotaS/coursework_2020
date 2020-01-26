@@ -150,17 +150,17 @@ class QLearningWithOptionsAgent(QLearningAgent):
                                 update_options.append(i + self.environment.action_space.n)
 
                         # Intra option Q learning update
-                        self.q[state][action] = self.q[state][action] + self.alpha * (
-                                (reward * self.gamma * (self.option_q_hat[next_state][action])) -
-                                self.q[state][action])
-
-                        max_o = np.max(self.q[next_state])
-                        if done:
-                            beta_s = 1
-                        else:
-                            beta_s = 0
-                        self.option_q_hat[next_state][action] = (1 - beta_s) * self.q[next_state][
-                            action] + beta_s * max_o
+                        # self.q[state][action] = self.q[state][action] + self.alpha * (
+                        #         (reward * self.gamma * (self.option_q_hat[next_state][action])) -
+                        #         self.q[state][action])
+                        #
+                        # max_o = np.max(self.q[next_state])
+                        # if done:
+                        #     beta_s = 1
+                        # else:
+                        #     beta_s = 0
+                        # self.option_q_hat[next_state][action] = (1 - beta_s) * self.q[next_state][
+                        #     action] + beta_s * max_o
 
                         for o in update_options:
                             self.q[state][o] += self.alpha * (reward + self.gamma * (
@@ -203,7 +203,7 @@ class QLearningWithOptionsAgent(QLearningAgent):
             next_state, reward, done, _ = self.environment.step(a)  # taking action
             next_state = str(next_state)
 
-            total_reward += reward * (self.gamma ** total_steps)
+            total_reward += reward  # * (self.gamma ** total_steps)
             total_steps += 1
 
             if done:

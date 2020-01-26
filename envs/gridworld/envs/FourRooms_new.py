@@ -245,6 +245,8 @@ class FourRooms(gym.Env):
             door = 2
         elif action == PUSH:
             door = 3
+        elif action == NUM_ACTIONS:
+            y = y + 1
 
         return x, y, door
 

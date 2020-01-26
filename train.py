@@ -63,7 +63,7 @@ def main():
     parameters = {'episodes': 1000, 'gamma': 0.9, 'alpha': 0.1, 'epsilon': 0.1}
     print('---Start---')
     start = time.time()
-    average_reward = train(parameters, withOptions=False, intra_options=False)
+    average_reward = train(parameters, withOptions=True, intra_options=True)
     end = time.time()
     print('\nAverage reward: {}', average_reward)
     print('Time (', parameters['episodes'], 'episodes ):', end - start)
@@ -72,12 +72,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# env = gym.make('FourRooms-v1')
-# actions = [0, 3, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 0, 0, 0]
-# state = env.reset()
-# for a in actions:
-#     next_observation, reward, done, _ = env.step(a)  # Taking option
-#     print(state, a, next_observation, reward, done)
-#     state = next_observation
-# env.render()

@@ -16,7 +16,9 @@ class Option:
         self._termination_condition = term_condition
 
     def policy_selection(self, state):
-        return self._policy_selection(self.policy, state)
+        if state in self.policy:
+            return self._policy_selection(self.policy, state)
+        return -1
 
     def termination_condition(self, state):
         return self._termination_condition(self.termination_set, state)
