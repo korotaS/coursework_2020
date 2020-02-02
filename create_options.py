@@ -1,8 +1,6 @@
-from utils.options import load_option, save_option
+from utils.option_methods import save_option
 import gym
-from option import QOption
-
-import envs.gridworld
+from utils.option import QOption
 
 # Defining actions
 UP = 0
@@ -151,7 +149,7 @@ def create_options(env):
                       term_set_3, policy_selection,
                       termination_condition_3, env.action_space.n)
 
-    save_option('FourRoomsO3', option3)
+    save_option('GridWorldOption1', option3)
 
 
 def view_option_policy(env, option):
@@ -162,9 +160,3 @@ def view_option_policy(env, option):
 if __name__ == '__main__':
     env = gym.make("FourRooms-v3")
     create_options(env)
-
-    # test load
-    # o1 = load_option('FourRoomsO1')
-    # view_option_policy(env, o1)
-    # o2 = load_option('FourRoomsO2')
-    # view_option_policy(env, o2)

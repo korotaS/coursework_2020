@@ -1,1 +1,1 @@
-from envs.gridworld.envs.FourRooms import FourRooms
+from envs.gridworld.envs.GridWorld import GridWorld

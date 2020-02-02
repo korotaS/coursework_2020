@@ -4,7 +4,6 @@ import numpy as np
 from gym import spaces
 from gym.utils import seeding
 from collections import defaultdict
-
 import matplotlib.pyplot as plt
 
 # Defining actions
@@ -36,7 +35,7 @@ MAP = "0 0 0 0 0 0 0 0 0 2 2 2 2\n" \
       "0 0 0 0 0 0 0 0 0 0 0 0 0"
 
 
-class FourRooms(gym.Env):
+class GridWorld(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, goal_reward=10.0, step_reward=-1.0, random_start_state=True, windiness=0.3):
@@ -76,6 +75,8 @@ class FourRooms(gym.Env):
 
         self.windiness = windiness
         self.transition_probability = self._construct_transition_probability()
+
+        self.np_random = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -299,47 +300,10 @@ class FourRooms(gym.Env):
             self.grid.append(rowArray)
         self.m = i + 1
 
-        self._find_hallWays()
-
-    def _find_hallWays(self):
-        self.hallwayStates = []
-        for x, y in self.possibleStates:
-            if ((self.grid[x - 1][y] == 1) and (self.grid[x + 1][y] == 1)) or \
-                    ((self.grid[x][y - 1] == 1) and (self.grid[x][y + 1] == 1)):
-                self.hallwayStates.append((x, y))
-
     def _get_grid_value(self, state):
         if state[0] < 0 or state[0] > 12 or state[1] < 0 or state[1] > 12:
             return -1
         return self.grid[state[0]][state[1]]
-
-    # specific for MAP
-    def _get_room_number(self, state=None):
-        if state == None:
-            state = self.state
-        # if state isn't at hall way point
-        xCount = self._greaterThanCounter(state, 0)
-        yCount = self._greaterThanCounter(state, 1)
-        room = 0
-        if yCount >= 2:
-            if xCount >= 2:
-                room = 2
-            else:
-                room = 1
-        else:
-            if xCount >= 2:
-                room = 3
-            else:
-                room = 0
-
-        return room
-
-    def _greaterThanCounter(self, state, index):
-        count = 0
-        for h in self.hallwayStates:
-            if state[index] > h[index]:
-                count = count + 1
-        return count
 
     def _get_reward(self, state):
         if state[:2] == self.goal:

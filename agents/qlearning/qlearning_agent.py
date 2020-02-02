@@ -72,8 +72,6 @@ class QLearningAgent(Agent):
 
             state = self.environment.reset()
             state = str(state)
-            if i_episode == num_episodes-1:
-                print('\rlol')
 
             # checking the speed of finding the optimal policy
             # grab = np.argmax(self.q['(5, 8, 0)'])
