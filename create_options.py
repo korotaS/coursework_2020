@@ -13,7 +13,7 @@ PUSH = 6
 NUM_ACTIONS = 7
 
 
-def create_options(env):
+def create_options():
     def policy_selection(policy, state):
         return policy[state]
 
@@ -147,16 +147,15 @@ def create_options(env):
 
     option3 = QOption(['(5, 8, 0)'], policy_option_3,
                       term_set_3, policy_selection,
-                      termination_condition_3, env.action_space.n)
+                      termination_condition_3, NUM_ACTIONS)
 
     save_option('GridWorldOption1', option3)
 
 
-def view_option_policy(env, option):
-    policy = option.policy
-    env.render(draw_arrows=True, policy=policy)
+# def view_option_policy(env, option):
+#     policy = option.policy
+#     env.render(draw_arrows=True, policy=policy)
 
 
 if __name__ == '__main__':
-    env = gym.make("FourRooms-v3")
-    create_options(env)
+    create_options()
