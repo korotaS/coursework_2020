@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 COLOURS = {'empty': [1, 1, 1],
            'wall': [0, 0, 0],
-           'block': [1, 0, 0],
            'path': [0, 1, 0],
-           'path_block': [0, 0, 1]}
+           'path_block': [0, 0, 1],
+           'start_goal': [1, 0, 0]}
 # Defining actions
 UP = 0
 RIGHT = 1
@@ -24,16 +24,6 @@ class BlocksWorld(gym.Env):
 
     def __init__(self, map_dict, goal_reward=10.0, step_reward=-1.0,
                  windiness=0.3):
-        self.num_cols = None
-        self.num_rows = None
-        self.block_start = None
-        self.block_dest = None
-        self.block_in_hand = None
-        self.start_state_coord = None
-        self.starting_state = None
-        self.state = None
-        self.goal = None
-        self.grid = None
         self.walls = None
         self.possibleStates = []
         self.map_dict = map_dict
@@ -68,37 +58,52 @@ class BlocksWorld(gym.Env):
                         if [x_c, wall[1]] not in self.walls:
                             self.walls.append([x_c, wall[1]])
         blocks = self.map_dict['blocks']
-        block = blocks[0]
-        if len(blocks) > 1:
-            raise NotImplementedError
         self.block_in_hand = 0
-        self.block_start = block['b_row'], block['b_col']
-        self.block_dest = block['dest_row'], block['dest_col']
+        self.blocks_start = []
+        self.blocks_dest = []
+        for block in blocks:
+            self.blocks_start.append([block['b_row'], block['b_col']])
+            self.blocks_dest.append([block['dest_row'], block['dest_col']])
+        self.num_blocks = len(blocks)
+        self.delivered = [False for i in range(self.num_blocks)]
         start_coord = self.map_dict['start']['x'], self.map_dict['start']['y']
         goal_coord = self.map_dict['goal']['x'], self.map_dict['goal']['y']
-        self.start_state_coord = start_coord
-        self.starting_state = self._encode(start_coord, self.block_start, 0)
+        self.start_coord = start_coord
+        self.goal_coord = goal_coord
+        self.starting_state = self._encode(start_coord, self.blocks_start, 0)
         self.state = self.starting_state
-        self.goal = self._encode(goal_coord, self.block_dest, 0)
+        self.goal = self._encode(goal_coord, self.blocks_dest, 0)
 
     def _encode_row_col(self, row_col):
         return row_col[0] * self.num_rows + row_col[1]
 
     def _decode_row_col(self, i):
-        return i // self.num_rows, i % self.num_rows
+        return [i // self.num_rows, i % self.num_rows]
 
-    def _encode(self, agent, block, block_in_hand):
+    def _encode(self, agent, blocks, block_in_hand):
         rc = self.num_rows * self.num_cols
-        return (self._encode_row_col(agent) * rc + self._encode_row_col(block))*2 + block_in_hand
+        i = self._encode_row_col(agent)
+        i *= rc
+        for j, block in enumerate(blocks):
+            i += self._encode_row_col(block)
+            if j != self.num_blocks-1:
+                i *= rc
+            else:
+                i *= (self.num_blocks+1)
+                i += block_in_hand
+        return i
 
     def _decode(self, i):
         rc = self.num_rows * self.num_cols
-        out = [i % 2]
-        i = i // 2
-        out.append(i % rc)
-        i = i // rc
-        out.append(i)
-        return self._decode_row_col(out[2]), self._decode_row_col(out[1]), out[0]
+        b_in_h = i % (self.num_blocks+1)
+        i = i // (self.num_blocks+1)
+        blocks = []
+        for j in range(self.num_blocks):
+            blocks.append(self._decode_row_col(i % rc))
+            i = i // rc
+        blocks.reverse()
+        agent = self._decode_row_col(i)
+        return agent, blocks, b_in_h
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -110,37 +115,42 @@ class BlocksWorld(gym.Env):
         if self.state == self.goal:
             self.done = True
             return self.state, self.goal_reward, self.done, None
-        (a_x, a_y), (b_x, b_y), b_in_h = self._decode(self.state)
+        (a_x, a_y), blocks, b_in_h = self._decode(self.state)
         reward = -1
         if action == UP:
             a_x = a_x - 1
-            if b_in_h == 1:
-                b_x = b_x - 1
+            if b_in_h != 0:
+                blocks[b_in_h-1][0] -= 1
         elif action == DOWN:
             a_x = a_x + 1
-            if b_in_h == 1:
-                b_x = b_x + 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][0] += 1
         elif action == RIGHT:
             a_y = a_y + 1
-            if b_in_h == 1:
-                b_y = b_y + 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][1] += 1
         elif action == LEFT:
             a_y = a_y - 1
-            if b_in_h == 1:
-                b_y = b_y - 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][1] -= 1
         elif action == PICKUP:
-            if b_in_h == 0 and (a_x, a_y) == (b_x, b_y) and (a_x, a_y) != self.block_dest:
-                b_in_h = 1
-                reward = self.nice_action_reward
+            if b_in_h == 0 and [a_x, a_y] in blocks:
+                ind = blocks.index([a_x, a_y])
+                if [a_x, a_y] != self.blocks_dest[ind] and not self.delivered[ind]:
+                    b_in_h = ind + 1
+                    reward = self.nice_action_reward
             else:
                 reward = self.illegal_action_reward
         elif action == PUTDOWN:
-            if b_in_h == 1 and (a_x, a_y) == self.block_dest:
-                b_in_h = 0
-                reward = self.nice_action_reward
+            if b_in_h != 0 and [a_x, a_y] in self.blocks_dest:
+                ind = self.blocks_dest.index([a_x, a_y])
+                if b_in_h == ind+1:
+                    b_in_h = 0
+                    reward = self.nice_action_reward
+                    self.delivered[ind] = True
             else:
                 reward = self.illegal_action_reward
-        new_state = self._encode((a_x, a_y), (b_x, b_y), b_in_h)
+        new_state = self._encode((a_x, a_y), blocks, b_in_h)
         if self._is_possible_move(new_state):
             self.state = new_state
         return self.state, reward, self.done, None
@@ -183,8 +193,8 @@ class BlocksWorld(gym.Env):
                 for k in range(3):
                     if self.walls is not None and [i, j] in self.walls:
                         this_value = COLOURS['wall'][k]
-                    elif (i, j) == self.block_start or (i, j) == self.block_dest:
-                        this_value = COLOURS['block'][k]
+                    elif (i, j) == self.start_coord or (i, j) == self.goal_coord:
+                        this_value = COLOURS['start_goal'][k]
                     else:
                         this_value = COLOURS['empty'][k]
                     img[i * gs0:(i + 1) * gs0, j * gs1:(j + 1) * gs1, k] = this_value
@@ -202,40 +212,49 @@ class BlocksWorld(gym.Env):
             curr_state = self.starting_state
             self.policy_to_goal = []
             while curr_state != self.goal:
-                (xa, ya), (xb, yb), b_i_h = self._decode(curr_state)
-                print(f'agent: {xa, ya}; block: {xb, yb}; in hand: {b_i_h}')
-                (dxa, dya), (dxb, dyb), db_in_h = self._action_as_point(policy[str(curr_state)], b_i_h)
+                (xa, ya), blocks, b_i_h = self._decode(curr_state)
+                string = f'agent: {xa, ya}; '
+                for i, block in enumerate(blocks):
+                    string += f'block_{i}: {block[0], block[1]}; '
+                print(string + f'in hand: {b_i_h}')
+                (dxa, dya), dblocks, db_in_h = self._action_as_point(policy[str(curr_state)], b_i_h, [xa, ya])
+                new_blocks = blocks
+                for old_block, dblock in zip(new_blocks, dblocks):
+                    old_block[0] += dblock[0]
+                    old_block[1] += dblock[1]
                 curr_state = self._encode((xa+dxa, ya+dya),
-                                          (xb+dxb, yb+dyb),
+                                          new_blocks,
                                           db_in_h)
                 self.policy_to_goal.append(curr_state)
-            print(f'agent: {xa+dxa, ya+dya}; block: {xb+dxb, yb+dyb}; in hand: {db_in_h}')
+            string = f'agent: {xa, ya}; '
+            for i, block in enumerate(blocks):
+                string += f'block_{i}: {block[0], block[1]};'
+            print(string + f' in hand: {db_in_h}')
 
-    def _action_as_point(self, action, b_in_h):
+    def _action_as_point(self, action, b_in_h, old_coords):
         a_x = 0
         a_y = 0
-        b_x = 0
-        b_y = 0
+        blocks = [[0, 0] for i in range(self.num_blocks)]
         if action == UP:
             a_x = a_x - 1
-            if b_in_h == 1:
-                b_x = b_x - 1
+            if b_in_h != 0:
+                blocks[b_in_h-1][0] -= 1
         elif action == DOWN:
             a_x = a_x + 1
-            if b_in_h == 1:
-                b_x = b_x + 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][0] += 1
         elif action == RIGHT:
             a_y = a_y + 1
-            if b_in_h == 1:
-                b_y = b_y + 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][1] += 1
         elif action == LEFT:
             a_y = a_y - 1
-            if b_in_h == 1:
-                b_y = b_y - 1
+            if b_in_h != 0:
+                blocks[b_in_h - 1][1] -= 1
         elif action == PICKUP:
             if b_in_h == 0:
-                b_in_h = 1
+                b_in_h = self.blocks_start.index(old_coords) + 1
         elif action == PUTDOWN:
-            if b_in_h == 1:
+            if b_in_h != 0:
                 b_in_h = 0
-        return (a_x, a_y), (b_x, b_y), b_in_h
+        return (a_x, a_y), blocks, b_in_h

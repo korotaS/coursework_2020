@@ -1,18 +1,15 @@
 {
   "map": {
-    "rows": 12,
-    "cols": 12,
-    "walls": [
-      [4, 0, 4, 8],
-      [4, 10, 4, 11]
-    ]
+    "rows": 8,
+    "cols": 8,
+    "walls": null
   },
   "blocks": [
     {
       "b_row": 3,
-      "b_col": 3,
-      "dest_row": 10,
-      "dest_col": 10
+      "b_col": 2,
+      "dest_row": 6,
+      "dest_col": 2
     }
   ],
   "start": {
@@ -20,7 +17,7 @@
     "y": 1
   },
   "goal": {
-    "x": 11,
-    "y": 8
+    "x": 7,
+    "y": 7
   }
 }
