@@ -50,16 +50,6 @@ class QLearningAgent(Agent):
         td_delta = td_target - self.q[state][action]
         self.q[state][action] += self.alpha * td_delta
 
-    def rupdate(self, state, action, reward, next_state):
-        best_next_action = np.argmax(self.q[next_state])
-        td_target = reward - self.r_avg + self.q[next_state][best_next_action]
-        td_delta = td_target - self.q[state][action]
-        self.q[state][action] += self.alpha * td_delta
-        if action == np.argmax(self.q[state]):
-            r_avg_delta = reward + self.q[next_state][best_next_action] - self.q[state][action]
-            r_avg_delta -= self.r_avg
-            self.r_avg += self.beta * r_avg_delta
-
     def train(self, num_episodes=500, verbose=False):
         total_total_reward = 0.0
         rewards = []
@@ -72,22 +62,14 @@ class QLearningAgent(Agent):
 
             state = self.environment.reset()
             state = str(state)
-
-            # checking the speed of finding the optimal policy
-            # grab = np.argmax(self.q['(5, 8, 0)'])
-            # rotate = np.argmax(self.q['(5, 8, 1)'])
-            # push = np.argmax(self.q['(5, 8, 2)'])
-            # if grab == 4 and rotate == 5 and push == 6:
-            #     print('optimal policy found')
-
             total_reward = 0.0
             for t in itertools.count():
+                # if verbose:
+                #     if t % 1000 == 0:
+                #         print("\rStep: {}".format(t))
                 action = self.act(state)
                 next_state, reward, done, _ = self.environment.step(action)
                 next_state = str(next_state)
-                # print("\rEpisode {}/{}, t={}.".format(i_episode + 1, num_episodes,t), end="")
-                # print("\r{} {}".format(self.q['(6,0)'], t), end="")
-                # sys.stdout.flush()
                 total_reward += reward
 
                 self.update(state, action, reward, next_state)

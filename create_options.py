@@ -152,10 +152,5 @@ def create_options():
     save_option('GridWorldOption1', option3)
 
 
-# def view_option_policy(env, option):
-#     policy = option.policy
-#     env.render(draw_arrows=True, policy=policy)
-
-
 if __name__ == '__main__':
     create_options()

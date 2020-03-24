@@ -4,7 +4,7 @@ class Agent:
 
     """
 
-    def act(self, observation, reward):
+    def act(self, state):
         raise NotImplementedError()
 
     def update(self, state, action, reward, next_state):
