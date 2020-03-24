@@ -1,23 +1,41 @@
 {
   "map": {
-    "rows": 8,
-    "cols": 8,
+    "rows": 9,
+    "cols": 9,
     "walls": null
   },
   "blocks": [
     {
-      "b_row": 3,
-      "b_col": 2,
-      "dest_row": 6,
-      "dest_col": 2
+      "b_row": 1,
+      "b_col": 4,
+      "dest_row": 4,
+      "dest_col": 4
+    },
+    {
+      "b_row": 7,
+      "b_col": 4,
+      "dest_row": 4,
+      "dest_col": 4
+    },
+    {
+      "b_row": 4,
+      "b_col": 7,
+      "dest_row": 4,
+      "dest_col": 4
+    },
+    {
+      "b_row": 4,
+      "b_col": 1,
+      "dest_row": 4,
+      "dest_col": 4
     }
   ],
   "start": {
-    "x": 1,
-    "y": 1
+    "x": 4,
+    "y": 4
   },
   "goal": {
-    "x": 7,
-    "y": 7
+    "x": 4,
+    "y": 4
   }
 }

@@ -25,7 +25,7 @@ def train(parameters):
         env.render(policy=policy)
     if parameters['verbose']:
         print()
-        agent.environment.build_policy_to_goal(policy)
+        agent.environment.build_policy_to_goal(policy, verbose=True)
     env.close()
     return average_eps_reward
 
@@ -38,7 +38,7 @@ def q_to_policy(q, offset=0):
 
 
 def main():
-    parameters = {'episodes': 1000, 'gamma': 0.9, 'alpha': 0.3, 'epsilon': 0.2, 'verbose': False, 'plot': True}
+    parameters = {'episodes': 1000, 'gamma': 0.95, 'alpha': 0.5, 'epsilon': 0.2, 'verbose': True, 'plot': True}
     print('---Start---')
     start = time.time()
     average_reward = train(parameters)
