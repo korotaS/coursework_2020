@@ -2,40 +2,56 @@
   "map": {
     "rows": 9,
     "cols": 9,
-    "walls": null
+    "walls": [
+      [0, 3, 5, 3],
+      [0, 5, 5, 5],
+      [0, 4, 0, 4]
+    ]
   },
   "blocks": [
     {
-      "b_row": 1,
+      "b_row": 8,
       "b_col": 4,
-      "dest_row": 4,
+      "dest_row": 6,
       "dest_col": 4
     },
     {
-      "b_row": 7,
-      "b_col": 4,
-      "dest_row": 4,
-      "dest_col": 4
+      "b_row": 6,
+      "b_col": 3,
+      "dest_row": 6,
+      "dest_col": 1
     },
     {
-      "b_row": 4,
-      "b_col": 7,
-      "dest_row": 4,
-      "dest_col": 4
-    },
-    {
-      "b_row": 4,
+      "b_row": 6,
       "b_col": 1,
-      "dest_row": 4,
+      "dest_row": 8,
+      "dest_col": 1
+    },
+    {
+      "b_row": 8,
+      "b_col": 1,
+      "dest_row": 8,
+      "dest_col": 7
+    },
+    {
+      "b_row": 8,
+      "b_col": 7,
+      "dest_row": 6,
+      "dest_col": 7
+    },
+    {
+      "b_row": 6,
+      "b_col": 7,
+      "dest_row": 6,
       "dest_col": 4
     }
   ],
   "start": {
-    "x": 4,
+    "x": 8,
     "y": 4
   },
   "goal": {
-    "x": 4,
+    "x": 6,
     "y": 4
   }
 }

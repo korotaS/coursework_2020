@@ -25,6 +25,7 @@ class BlocksWorld(gym.Env):
     def __init__(self, map_dict, goal_reward=10.0, step_reward=-1.0,
                  windiness=0.3):
         self.walls = None
+        self.state = None
         self.possibleStates = []
         self.map_dict = map_dict
         self._map_init()
@@ -176,13 +177,13 @@ class BlocksWorld(gym.Env):
                          facecolor='w', edgecolor='k')
         plt.clf()
         plt.xticks(np.arange(0, self.num_cols+1, 1))
-        plt.yticks(np.arange(self.num_rows+1, 0, -1))
+        plt.yticks(np.arange(0, self.num_rows+1, 1))
         plt.grid(True)
-        plt.title(name_prefix + "\nAgent:Purple, Goal:Green", fontsize=20)
-        plt.imshow(img, origin="upper", extent=[0, self.num_rows, 0, self.num_cols])
+        plt.imshow(img, origin="upper", extent=[0, self.num_cols, 0, self.num_rows])
+        # ax = plt.gca()
+        # ax.invert_yaxis()
         fig.canvas.draw()
         plt.title(name_prefix + " learned Policy", fontsize=15)
-
         plt.pause(0.00001)  # 0.01
         return
 
@@ -233,7 +234,7 @@ class BlocksWorld(gym.Env):
     def _action_as_point(self, action, b_in_h, old_coords):
         a_x = 0
         a_y = 0
-        blocks = [[0, 0] for i in range(self.num_blocks)]
+        blocks = [[0, 0] for _ in range(self.num_blocks)]
         if action == UP:
             a_x = a_x - 1
             if b_in_h != 0:
