@@ -3,12 +3,15 @@ import numpy as np
 from gym import spaces
 from gym.utils import seeding
 import matplotlib.pyplot as plt
+import os
+import time
+import imageio
 
 COLOURS = {'empty': [1, 1, 1],
            'wall': [0, 0, 0],
            'path': [0, 1, 0],
            'path_block': [0, 0, 1],
-           'start_goal': [1, 0, 0]}
+           'block': [1, 0, 0]}
 # Defining actions
 UP = 0
 RIGHT = 1
@@ -110,6 +113,16 @@ class BlocksWorld(gym.Env):
         np.random.rand(seed)
         return [seed]
 
+    def _is_near_block(self, a_x, a_y, block):
+        return block == [a_x - 1, a_y - 1] or \
+               block == [a_x - 1, a_y] or \
+               block == [a_x - 1, a_y + 1] or \
+               block == [a_x, a_y - 1] or \
+               block == [a_x, a_y + 1] or \
+               block == [a_x + 1, a_y - 1] or \
+               block == [a_x + 1, a_y] or \
+               block == [a_x + 1, a_y + 1]
+
     def step(self, action):
         assert self.action_space.contains(action)
         if self.state == self.goal:
@@ -141,14 +154,16 @@ class BlocksWorld(gym.Env):
             reward = self.illegal_action_reward
         else:
             if action == PICKUP:
-                if b_in_h == 0 and [a_x, a_y] == blocks[curr_block_index]:
+                if b_in_h == 0 and self._is_near_block(a_x, a_y, blocks[curr_block_index]):
+                    blocks[curr_block_index] = [a_x, a_y]
                     b_in_h = curr_block_index + 1
                     reward = self.nice_action_reward
                 else:
                     reward = self.illegal_action_reward
             elif action == PUTDOWN:
-                if b_in_h != 0 and [a_x, a_y] == self.blocks_dest[curr_block_index]:
+                if b_in_h != 0 and self._is_near_block(a_x, a_y, self.blocks_dest[curr_block_index]):
                     b_in_h = 0
+                    blocks[curr_block_index] = self.blocks_dest[curr_block_index]
                     reward = self.nice_action_reward
                     self.delivered[curr_block_index] = True
                 else:
@@ -160,81 +175,88 @@ class BlocksWorld(gym.Env):
 
     def _is_possible_move(self, state):
         (a_x, a_y), _, _ = self._decode(state)
-        walls_check = True
         if self.walls is not None:
-            walls_check = [a_x, a_y] not in self.walls
-        return 0 < a_x < self.num_rows and 0 < a_y < self.num_cols and walls_check
+            if [a_x, a_y] in self.walls:
+                return False
+        blocks_on_ground = [self.blocks_dest[i] if val else self.blocks_start[i]
+                            for i, val in enumerate(self.delivered)]
+        if [a_x, a_y] in blocks_on_ground:
+            return False
+        return 0 < a_x < self.num_rows and 0 < a_y < self.num_cols
 
     def reset(self):
         self.done = False
         self._map_init()
         return self.state
 
-    def render(self, policy=None, name_prefix='BlocksWorld'):
-        self.build_policy_to_goal(policy, verbose=False)
-        img = self._map_to_img()
-        fig = plt.figure(1, figsize=(10, 8), dpi=60,
-                         facecolor='w', edgecolor='k')
-        plt.clf()
-        plt.xticks(np.arange(0, self.num_cols+1, 1))
-        plt.yticks(np.arange(0, self.num_rows+1, 1))
-        plt.grid(True)
-        plt.imshow(img, origin="upper", extent=[0, self.num_cols, 0, self.num_rows])
-        # ax = plt.gca()
-        # ax.invert_yaxis()
-        fig.canvas.draw()
-        plt.title(name_prefix + " learned Policy", fontsize=15)
-        plt.pause(0.00001)  # 0.01
-        return
+    def _action_to_str(self, action):
+        if action == UP:
+            return 'up'
+        elif action == DOWN:
+            return 'down'
+        elif action == RIGHT:
+            return 'right'
+        elif action == LEFT:
+            return 'left'
+        elif action == PICKUP:
+            return 'pick up'
+        elif action == PUTDOWN:
+            return 'put down'
 
-    def _map_to_img(self):
-        img = np.zeros((self.num_rows, self.num_cols, 3))
-        gs0 = int(img.shape[0] / self.num_rows)
-        gs1 = int(img.shape[1] / self.num_cols)
-        for i in range(self.num_rows):
-            for j in range(self.num_cols):
-                for k in range(3):
-                    if self.walls is not None and [i, j] in self.walls:
-                        this_value = COLOURS['wall'][k]
-                    elif (i, j) == self.start_coord or (i, j) == self.goal_coord:
-                        this_value = COLOURS['start_goal'][k]
-                    else:
-                        this_value = COLOURS['empty'][k]
-                    img[i * gs0:(i + 1) * gs0, j * gs1:(j + 1) * gs1, k] = this_value
-        for step in self.policy_to_goal:
-            (xa, ya), _, b_i_h = self._decode(step)
-            if b_i_h:
-                this_value = COLOURS['path_block']
-            else:
-                this_value = COLOURS['path']
-            img[xa * gs0:(xa + 1) * gs0, ya * gs1:(ya + 1) * gs1, :] = this_value
-        return img
-
-    def build_policy_to_goal(self, policy, verbose=False):
+    def build_policy_to_goal(self, policy, verbose=False, movement=False):
         if type(policy) is not None:
             curr_state = self.starting_state
             self.policy_to_goal = []
+            delivered = [False for _ in range(self.num_blocks)]
+            count = 0
+            full_path = ''
+            print('\nCalculating full path...')
+            if movement:
+                dir_name = time.strftime('%a_%d_%b_%Y_%H_%M_%S')
+                full_path = f'movements/{dir_name}/'
+                os.mkdir(full_path)
             while curr_state != self.goal:
                 (xa, ya), blocks, b_i_h = self._decode(curr_state)
+                action = policy[str(curr_state)]
+                if movement:
+                    self.render([curr_state], save_path=full_path+f'{count}.png',
+                                name_prefix=f'Agent at {count}th time step')
+                count += 1
                 if verbose:
                     string = f'agent: {xa, ya}; '
                     for i, block in enumerate(blocks):
                         string += f'block_{i+1}: {block[0], block[1]}; '
-                    print(string + f'in hand: ' + (f'block_{b_i_h}' if b_i_h != 0 else 'nothing'))
-                (dxa, dya), dblocks, db_in_h = self._action_as_point(policy[str(curr_state)], b_i_h, [xa, ya])
-                new_blocks = blocks
-                for old_block, dblock in zip(new_blocks, dblocks):
-                    old_block[0] += dblock[0]
-                    old_block[1] += dblock[1]
+                    print(string + f'in hand: ' +
+                          (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') +
+                          f'action: {self._action_to_str(action)}')
+                (dxa, dya), new_blocks, db_in_h, delivered = self._action_as_point(action,
+                                                                                   blocks,
+                                                                                   b_i_h,
+                                                                                   [xa, ya],
+                                                                                   delivered)
                 curr_state = self._encode((xa+dxa, ya+dya),
                                           new_blocks,
                                           db_in_h)
                 self.policy_to_goal.append(curr_state)
+            if movement:
+                print('Making gif...')
+                images = []
+                gif_path = full_path + 'movement.gif'
+                if os.path.exists(gif_path):
+                    os.remove(gif_path)
+                one_frame_duration = 0.5
+                kwargs = {'duration': one_frame_duration}
+                for filename in sorted(os.listdir(full_path), key=lambda file: int(file.split('.')[0])):
+                    images.append(imageio.imread(full_path + filename))
+                imageio.mimsave(gif_path, images, 'GIF', **kwargs)
 
-    def _action_as_point(self, action, b_in_h, old_coords):
+    def _action_as_point(self, action, blocks, b_in_h, old_coords, delivered):
         a_x = 0
         a_y = 0
-        blocks = [[0, 0] for _ in range(self.num_blocks)]
+        try:
+            curr_block_index = delivered.index(False)
+        except ValueError:
+            curr_block_index = -1
         if action == UP:
             a_x = a_x - 1
             if b_in_h != 0:
@@ -253,8 +275,59 @@ class BlocksWorld(gym.Env):
                 blocks[b_in_h - 1][1] -= 1
         elif action == PICKUP:
             if b_in_h == 0:
-                b_in_h = self.blocks_start.index(old_coords) + 1
+                b_in_h = curr_block_index + 1
+                blocks[curr_block_index] = old_coords
         elif action == PUTDOWN:
             if b_in_h != 0:
                 b_in_h = 0
-        return (a_x, a_y), blocks, b_in_h
+                delivered[curr_block_index] = True
+                blocks[curr_block_index] = self.blocks_dest[curr_block_index]
+        return (a_x, a_y), blocks, b_in_h, delivered
+
+    def render(self, policy=None, name_prefix='BlocksWorld', save_path=None):
+        if save_path is not None:
+            img = self._map_to_img(policy)
+        else:
+            self.build_policy_to_goal(policy, verbose=False)
+            img = self._map_to_img(self.policy_to_goal)
+        fig = plt.figure(1, figsize=(10, 8), dpi=60,
+                         facecolor='w', edgecolor='k')
+        plt.clf()
+        plt.xticks(np.arange(0, self.num_cols+1, 1))
+        plt.yticks(np.arange(0, self.num_rows+1, 1))
+        plt.grid(True)
+        plt.imshow(img, origin="upper", extent=[0, self.num_cols, 0, self.num_rows])
+        plt.title(name_prefix, fontsize=15)
+        if save_path is not None:
+            plt.savefig(save_path)
+        else:
+            fig.canvas.draw()
+            plt.pause(0.00001)
+        return
+
+    def _map_to_img(self, policy):
+        img = np.zeros((self.num_rows, self.num_cols, 3))
+        gs0 = int(img.shape[0] / self.num_rows)
+        gs1 = int(img.shape[1] / self.num_cols)
+        for i in range(self.num_rows):
+            for j in range(self.num_cols):
+                for k in range(3):
+                    if self.walls is not None and [i, j] in self.walls:
+                        this_value = COLOURS['wall'][k]
+                    else:
+                        this_value = COLOURS['empty'][k]
+                    img[i * gs0:(i + 1) * gs0, j * gs1:(j + 1) * gs1, k] = this_value
+        for step in policy:
+            (xa, ya), blocks, b_i_h = self._decode(step)
+            if b_i_h:
+                this_value = COLOURS['path_block']
+            else:
+                this_value = COLOURS['path']
+            img[xa * gs0:(xa + 1) * gs0, ya * gs1:(ya + 1) * gs1, :] = this_value
+        if len(policy) == 1:
+            _, blocks, b_i_h = self._decode(policy[0])
+            for i, block in enumerate(blocks):
+                x, y = block
+                if i != b_i_h - 1:
+                    img[x * gs0:(x + 1) * gs0, y * gs1:(y + 1) * gs1, :] = COLOURS['block']
+        return img
