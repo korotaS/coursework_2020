@@ -284,6 +284,8 @@ class BlocksWorld(gym.Env):
                 blocks[curr_block_index] = self.blocks_dest[curr_block_index]
         return (a_x, a_y), blocks, b_in_h, delivered
 
+    # drawing and animation methods
+
     def render(self, policy=None, name_prefix='BlocksWorld', save_path=None):
         if save_path is not None:
             img = self._map_to_img(policy)
@@ -296,8 +298,9 @@ class BlocksWorld(gym.Env):
         plt.xticks(np.arange(0, self.num_cols+1, 1))
         plt.yticks(np.arange(0, self.num_rows+1, 1))
         plt.grid(True)
-        plt.imshow(img, origin="upper", extent=[0, self.num_cols, 0, self.num_rows])
+        plt.imshow(img, origin="lower", extent=[0, self.num_cols, 0, self.num_rows])
         plt.title(name_prefix, fontsize=15)
+        plt.gca().invert_yaxis()
         if save_path is not None:
             plt.savefig(save_path)
         else:
