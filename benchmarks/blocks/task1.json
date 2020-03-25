@@ -1,0 +1,31 @@
+{
+  "map": {
+    "rows": 9,
+    "cols": 9,
+    "walls": [
+      [1, 4, 8, 4]
+    ]
+  },
+  "blocks": [
+    {
+      "b_row": 0,
+      "b_col": 0,
+      "dest_row": 3,
+      "dest_col": 7
+    },
+    {
+      "b_row": 7,
+      "b_col": 0,
+      "dest_row": 3,
+      "dest_col": 7
+    }
+  ],
+  "start": {
+    "x": 1,
+    "y": 1
+  },
+  "goal": {
+    "x": 3,
+    "y": 6
+  }
+}

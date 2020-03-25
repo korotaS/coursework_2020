@@ -37,8 +37,8 @@ class BlocksWorld(gym.Env):
         # Rewards
         self.step_reward = step_reward
         self.goal_reward = goal_reward
-        self.nice_action_reward = 10
-        self.illegal_action_reward = -10
+        self.nice_action_reward = 5
+        self.illegal_action_reward = -5
 
         obs = (self.num_rows*self.num_cols)**3
         self.observation_space = spaces.Discrete(obs)
@@ -134,19 +134,19 @@ class BlocksWorld(gym.Env):
             curr_block_index = self.delivered.index(False)
         except ValueError:
             curr_block_index = -1
-        if action == UP:
+        if action == UP and a_x > 0:
             a_x = a_x - 1
             if b_in_h != 0:
                 blocks[b_in_h-1][0] -= 1
-        elif action == DOWN:
+        elif action == DOWN and a_x < self.num_rows - 1:
             a_x = a_x + 1
             if b_in_h != 0:
                 blocks[b_in_h - 1][0] += 1
-        elif action == RIGHT:
+        elif action == RIGHT and a_y < self.num_cols - 1:
             a_y = a_y + 1
             if b_in_h != 0:
                 blocks[b_in_h - 1][1] += 1
-        elif action == LEFT:
+        elif action == LEFT and a_y > 0:
             a_y = a_y - 1
             if b_in_h != 0:
                 blocks[b_in_h - 1][1] -= 1
@@ -182,7 +182,7 @@ class BlocksWorld(gym.Env):
                             for i, val in enumerate(self.delivered)]
         if [a_x, a_y] in blocks_on_ground:
             return False
-        return 0 < a_x < self.num_rows and 0 < a_y < self.num_cols
+        return True
 
     def reset(self):
         self.done = False
@@ -212,7 +212,7 @@ class BlocksWorld(gym.Env):
             full_path = ''
             print('\nCalculating full path...')
             if movement:
-                dir_name = time.strftime('%a_%d_%b_%Y_%H_%M_%S')
+                dir_name = time.strftime('%d_%b_%Y_%H_%M_%S')
                 full_path = f'movements/{dir_name}/'
                 os.mkdir(full_path)
             while curr_state != self.goal:
@@ -292,7 +292,7 @@ class BlocksWorld(gym.Env):
         else:
             self.build_policy_to_goal(policy, verbose=False)
             img = self._map_to_img(self.policy_to_goal)
-        fig = plt.figure(1, figsize=(10, 8), dpi=60,
+        fig = plt.figure(1, figsize=(10, 8), dpi=50,
                          facecolor='w', edgecolor='k')
         plt.clf()
         plt.xticks(np.arange(0, self.num_cols+1, 1))
