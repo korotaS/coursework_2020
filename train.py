@@ -46,7 +46,7 @@ def q_to_policy(q, offset=0):
 
 def main():
     parameters = {'episodes': 1000, 'gamma': 0.95, 'alpha': 0.5, 'epsilon': 0.2,
-                  'verbose': True, 'plot': False, 'movement': True, 'bench': 'blocks/task3.json'}
+                  'verbose': True, 'plot': False, 'movement': False, 'bench': 'blocks/task3.json'}
     print('---Start---')
     start = time.time()
     average_reward = train(parameters)

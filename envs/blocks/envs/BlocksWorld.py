@@ -62,19 +62,22 @@ class BlocksWorld(gym.Env):
                         if [x_c, wall[1]] not in self.walls:
                             self.walls.append([x_c, wall[1]])
         blocks = self.map_dict['blocks']
-        self.blocks_start = []
-        self.blocks_dest = []
-        for block in blocks:
-            self.blocks_start.append([block['start_x'], block['start_y']])
-            self.blocks_dest.append([block['goal_x'], block['goal_y']])
+        self.blocks_start = {}
+        self.blocks_dest = {}
+        for name, block in blocks.items():
+            self.blocks_start[name] = {'x': block['start_x'], 'y': block['start_y']}
+            self.blocks_dest[name] = {'x': block['goal_x'], 'y': block['goal_y']}
         self.num_blocks = len(blocks)
         self.delivered = [False for _ in range(self.num_blocks)]
         agent = self.map_dict['agent']
+        b_in_h = 0
+        if agent['holding'] is not None:
+            b_in_h = list(blocks.keys()).index(agent['holding'])+1
         start_coord = agent['start_x'], agent['start_y']
         goal_coord = agent['goal_x'], agent['goal_y']
         self.start_coord = start_coord
         self.goal_coord = goal_coord
-        self.starting_state = self._encode(start_coord, self.blocks_start, 0)
+        self.starting_state = self._encode(start_coord, self.blocks_start, b_in_h)
         self.state = self.starting_state
         self.goal = self._encode(goal_coord, self.blocks_dest, 0)
 
@@ -88,8 +91,9 @@ class BlocksWorld(gym.Env):
         rc = self.num_rows * self.num_cols
         i = self._encode_row_col(agent)
         i *= rc
-        for j, block in enumerate(blocks):
-            i += self._encode_row_col(block)
+        for j, (_, v) in enumerate(blocks.items()):
+            block_info = [v['x'], v['y']]
+            i += self._encode_row_col(block_info)
             if j != self.num_blocks-1:
                 i *= rc
             else:
@@ -101,11 +105,12 @@ class BlocksWorld(gym.Env):
         rc = self.num_rows * self.num_cols
         b_in_h = i % (self.num_blocks+1)
         i = i // (self.num_blocks+1)
-        blocks = []
+        blocks = {}
         for j in range(self.num_blocks):
-            blocks.append(self._decode_row_col(i % rc))
+            x, y = self._decode_row_col(i % rc)
+            blocks[j] = {'x': x, 'y': y}
             i = i // rc
-        blocks.reverse()
+        blocks = {k: blocks[k] for k in reversed(list(blocks.keys()))}
         agent = self._decode_row_col(i)
         return agent, blocks, b_in_h
 
@@ -124,51 +129,70 @@ class BlocksWorld(gym.Env):
                block == [a_x + 1, a_y] or \
                block == [a_x + 1, a_y + 1]
 
+    def _blocks_dict_to_arr(self, blocks):
+        return [[val['x'], val['y']] for val in blocks.values()]
+
+    def _blocks_arr_to_dict(self, blocks_arr):
+        blocks_dict = {i: {} for i in range(len(blocks_arr))}
+        for i, block in enumerate(blocks_arr):
+            blocks_dict[i]['x'] = blocks_arr[i][0]
+            blocks_dict[i]['y'] = blocks_arr[i][1]
+        return blocks_dict
+
     def step(self, action):
         assert self.action_space.contains(action)
         if self.state == self.goal:
             self.done = True
             return self.state, self.goal_reward, self.done, None
         (a_x, a_y), blocks, b_in_h = self._decode(self.state)
+        blocks_arr = self._blocks_dict_to_arr(blocks)
         reward = -1
-        try:
-            curr_block_index = self.delivered.index(False)
-        except ValueError:
-            curr_block_index = -1
+        if b_in_h == 0:
+            try:
+                curr_block_index = self.delivered.index(False)
+            except ValueError:
+                curr_block_index = -1
+        else:
+            curr_block_index = b_in_h - 1
         if action == UP and a_x > 0:
             a_x = a_x - 1
             if b_in_h != 0:
-                blocks[b_in_h-1][0] -= 1
+                blocks_arr[b_in_h-1][0] -= 1
         elif action == DOWN and a_x < self.num_rows - 1:
             a_x = a_x + 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][0] += 1
+                blocks_arr[b_in_h - 1][0] += 1
         elif action == RIGHT and a_y < self.num_cols - 1:
             a_y = a_y + 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][1] += 1
+                blocks_arr[b_in_h - 1][1] += 1
         elif action == LEFT and a_y > 0:
             a_y = a_y - 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][1] -= 1
+                blocks_arr[b_in_h - 1][1] -= 1
         elif curr_block_index == -1:
             reward = self.illegal_action_reward
         else:
             if action == PICKUP:
-                if b_in_h == 0 and self._is_near_block(a_x, a_y, blocks[curr_block_index]):
-                    blocks[curr_block_index] = [a_x, a_y]
+                if b_in_h == 0 and self._is_near_block(a_x, a_y, blocks_arr[curr_block_index]):
+                    blocks_arr[curr_block_index] = [a_x, a_y]
                     b_in_h = curr_block_index + 1
                     reward = self.nice_action_reward
                 else:
                     reward = self.illegal_action_reward
             elif action == PUTDOWN:
-                if b_in_h != 0 and self._is_near_block(a_x, a_y, self.blocks_dest[curr_block_index]):
+                curr_block = None
+                if b_in_h > 0:
+                    key = list(self.blocks_dest.keys())[curr_block_index]
+                    curr_block = [self.blocks_dest[key]['x'], self.blocks_dest[key]['y']]
+                if b_in_h != 0 and self._is_near_block(a_x, a_y, curr_block):
                     b_in_h = 0
-                    blocks[curr_block_index] = self.blocks_dest[curr_block_index]
+                    blocks_arr[curr_block_index] = curr_block
                     reward = self.nice_action_reward
                     self.delivered[curr_block_index] = True
                 else:
                     reward = self.illegal_action_reward
+        blocks = self._blocks_arr_to_dict(blocks_arr)
         new_state = self._encode((a_x, a_y), blocks, b_in_h)
         if self._is_possible_move(new_state):
             self.state = new_state
@@ -179,7 +203,12 @@ class BlocksWorld(gym.Env):
         if self.walls is not None:
             if [a_x, a_y] in self.walls:
                 return False
-        blocks_on_ground = [self.blocks_dest[i] if val else self.blocks_start[i]
+        blocks_start_arr = [[block['x'], block['y']]
+                            for block in self.blocks_start.values()]
+        blocks_dest_arr = [[block['x'], block['y']]
+                           for block in self.blocks_dest.values()]
+        blocks_on_ground = [blocks_dest_arr[i] if val
+                            else blocks_start_arr[i]
                             for i, val in enumerate(self.delivered)]
         if [a_x, a_y] in blocks_on_ground:
             return False
@@ -218,15 +247,19 @@ class BlocksWorld(gym.Env):
                 os.mkdir(full_path)
             while curr_state != self.goal:
                 (xa, ya), blocks, b_i_h = self._decode(curr_state)
-                action = policy[str(curr_state)]
+                try:
+                    action = policy[str(curr_state)]
+                except KeyError:
+                    print('some troubles with goal path...')
+                    return
                 if movement:
                     self.render([curr_state], save_path=full_path+f'{count}.png',
                                 name_prefix=f'Agent at {count}th time step')
                 count += 1
                 if verbose:
                     string = f'agent: {xa, ya}; '
-                    for i, block in enumerate(blocks):
-                        string += f'block_{i+1}: {block[0], block[1]}; '
+                    for i, (_, v) in enumerate(blocks.items()):
+                        string += f'block_{i+1}: {v["x"], v["y"]}; '
                     print(string + f'in hand: ' +
                           (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') +
                           f'action: {self._action_to_str(action)}')
@@ -254,35 +287,42 @@ class BlocksWorld(gym.Env):
     def _action_as_point(self, action, blocks, b_in_h, old_coords, delivered):
         a_x = 0
         a_y = 0
-        try:
-            curr_block_index = delivered.index(False)
-        except ValueError:
-            curr_block_index = -1
+        blocks_arr = self._blocks_dict_to_arr(blocks)
+        if b_in_h == 0:
+            try:
+                curr_block_index = delivered.index(False)
+            except ValueError:
+                curr_block_index = -1
+        else:
+            curr_block_index = b_in_h - 1
         if action == UP:
             a_x = a_x - 1
             if b_in_h != 0:
-                blocks[b_in_h-1][0] -= 1
+                blocks_arr[b_in_h-1][0] -= 1
         elif action == DOWN:
             a_x = a_x + 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][0] += 1
+                blocks_arr[b_in_h - 1][0] += 1
         elif action == RIGHT:
             a_y = a_y + 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][1] += 1
+                blocks_arr[b_in_h - 1][1] += 1
         elif action == LEFT:
             a_y = a_y - 1
             if b_in_h != 0:
-                blocks[b_in_h - 1][1] -= 1
+                blocks_arr[b_in_h - 1][1] -= 1
         elif action == PICKUP:
             if b_in_h == 0:
                 b_in_h = curr_block_index + 1
-                blocks[curr_block_index] = old_coords
+                blocks_arr[curr_block_index] = old_coords
         elif action == PUTDOWN:
             if b_in_h != 0:
                 b_in_h = 0
                 delivered[curr_block_index] = True
-                blocks[curr_block_index] = self.blocks_dest[curr_block_index]
+                key = list(self.blocks_dest.keys())[curr_block_index]
+                curr_block = [self.blocks_dest[key]['x'], self.blocks_dest[key]['y']]
+                blocks_arr[curr_block_index] = curr_block
+        blocks = self._blocks_arr_to_dict(blocks_arr)
         return (a_x, a_y), blocks, b_in_h, delivered
 
     # drawing and animation methods
