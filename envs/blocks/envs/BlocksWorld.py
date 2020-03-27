@@ -65,12 +65,13 @@ class BlocksWorld(gym.Env):
         self.blocks_start = []
         self.blocks_dest = []
         for block in blocks:
-            self.blocks_start.append([block['b_row'], block['b_col']])
-            self.blocks_dest.append([block['dest_row'], block['dest_col']])
+            self.blocks_start.append([block['start_x'], block['start_y']])
+            self.blocks_dest.append([block['goal_x'], block['goal_y']])
         self.num_blocks = len(blocks)
         self.delivered = [False for _ in range(self.num_blocks)]
-        start_coord = self.map_dict['start']['x'], self.map_dict['start']['y']
-        goal_coord = self.map_dict['goal']['x'], self.map_dict['goal']['y']
+        agent = self.map_dict['agent']
+        start_coord = agent['start_x'], agent['start_y']
+        goal_coord = agent['goal_x'], agent['goal_y']
         self.start_coord = start_coord
         self.goal_coord = goal_coord
         self.starting_state = self._encode(start_coord, self.blocks_start, 0)

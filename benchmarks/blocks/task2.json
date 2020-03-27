@@ -8,24 +8,22 @@
   },
   "blocks": [
     {
-      "b_row": 0,
-      "b_col": 0,
-      "dest_row": 10,
-      "dest_col": 10
+      "start_x": 0,
+      "start_y": 0,
+      "goal_x": 10,
+      "goal_y": 10
     },
     {
-      "b_row": 0,
-      "b_col": 10,
-      "dest_row": 10,
-      "dest_col": 0
+      "start_x": 0,
+      "start_y": 10,
+      "goal_x": 0,
+      "goal_y": 10
     }
   ],
-  "start": {
-    "x": 1,
-    "y": 1
-  },
-  "goal": {
-    "x": 9,
-    "y": 0
+  "agent": {
+    "start_x": 1,
+    "start_y": 1,
+    "goal_x": 9,
+    "goal_y": 0
   }
 }
