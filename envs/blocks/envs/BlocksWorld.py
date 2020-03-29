@@ -62,6 +62,7 @@ class BlocksWorld(gym.Env):
                         if [x_c, wall[1]] not in self.walls:
                             self.walls.append([x_c, wall[1]])
         blocks = self.map_dict['blocks']
+        # TODO: поговорить по поводу размера карты
         self.blocks_start = {}
         self.blocks_dest = {}
         for name, block in blocks.items():
@@ -69,6 +70,9 @@ class BlocksWorld(gym.Env):
             self.blocks_dest[name] = {'x': block['goal_x'], 'y': block['goal_y']}
         self.num_blocks = len(blocks)
         self.delivered = [False for _ in range(self.num_blocks)]
+        for i, name in enumerate(blocks):
+            if self.blocks_dest[name] == self.blocks_start[name]:
+                self.delivered[i] = True
         agent = self.map_dict['agent']
         b_in_h = 0
         if agent['holding'] is not None:
@@ -238,6 +242,9 @@ class BlocksWorld(gym.Env):
             curr_state = self.starting_state
             self.policy_to_goal = []
             delivered = [False for _ in range(self.num_blocks)]
+            for i, name in enumerate(self.blocks_dest):
+                if self.blocks_dest[name] == self.blocks_start[name]:
+                    delivered[i] = True
             count = 0
             full_path = ''
             print('\nCalculating full path...')

@@ -16,8 +16,8 @@ def train(parameters):
     alpha = parameters['alpha']
     epsilon = parameters['epsilon']
     env_name = "BlocksWorld-v1"
-    if os.path.exists('benchmarks/' + parameters['bench']):
-        with open('benchmarks/' + parameters['bench'], 'r') as read:
+    if os.path.exists(parameters['bench']):
+        with open(parameters['bench'], 'r') as read:
             map_dict = json.load(read)
     else:
         raise FileNotFoundError
@@ -45,8 +45,9 @@ def q_to_policy(q, offset=0):
 
 
 def main():
+    path_to_file = 'parsed/parsed_task777_planner.json'
     parameters = {'episodes': 1000, 'gamma': 0.95, 'alpha': 0.5, 'epsilon': 0.2,
-                  'verbose': True, 'plot': False, 'movement': False, 'bench': 'blocks/task3.json'}
+                  'verbose': True, 'plot': False, 'movement': False, 'bench': path_to_file}
     print('---Start---')
     start = time.time()
     average_reward = train(parameters)
