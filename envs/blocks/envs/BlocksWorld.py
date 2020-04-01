@@ -62,21 +62,26 @@ class BlocksWorld(gym.Env):
                         if [x_c, wall[1]] not in self.walls:
                             self.walls.append([x_c, wall[1]])
         blocks = self.map_dict['blocks']
-        # TODO: поговорить по поводу размера карты
         self.blocks_start = {}
         self.blocks_dest = {}
+        self.map_start_x = self.map_dict['map']['start_x']
+        self.map_start_y = self.map_dict['map']['start_y']
+        self.coord_modes = []
+        self.block_names = []
+        self.delivered = []
         for name, block in blocks.items():
-            self.blocks_start[name] = {'x': block['start_x'], 'y': block['start_y']}
-            self.blocks_dest[name] = {'x': block['goal_x'], 'y': block['goal_y']}
-        self.num_blocks = len(blocks)
-        self.delivered = [False for _ in range(self.num_blocks)]
-        for i, name in enumerate(blocks):
-            if self.blocks_dest[name] == self.blocks_start[name]:
-                self.delivered[i] = True
+            if block['start_x'] != block['goal_x'] and block['start_x'] == block['goal_x']:
+                self.blocks_start[name] = {'x': block['start_x'], 'y': block['start_y']}
+                self.blocks_dest[name] = {'x': block['goal_x'], 'y': block['goal_y']}
+                self.delivered.append(False)
+                self.coord_modes.append(block['coord_mode'])
+                self.block_names.append(name)
+        self.num_blocks = len(self.delivered)
         agent = self.map_dict['agent']
+        self.agent_coord_mode = agent['coord_mode']
         b_in_h = 0
-        if agent['holding'] is not None:
-            b_in_h = list(blocks.keys()).index(agent['holding'])+1
+        if agent['holding_start'] is not None:
+            b_in_h = list(self.blocks_start.keys()).index(agent['holding_start'])+1
         start_coord = agent['start_x'], agent['start_y']
         goal_coord = agent['goal_x'], agent['goal_y']
         self.b_in_h_goal = 0
@@ -119,6 +124,8 @@ class BlocksWorld(gym.Env):
             x, y = self._decode_row_col(i % rc)
             blocks[j] = {'x': x, 'y': y}
             i = i // rc
+        if self.num_blocks == 0:
+            i = i // rc
         blocks = {k: blocks[k] for k in reversed(list(blocks.keys()))}
         agent = self._decode_row_col(i)
         return agent, blocks, b_in_h
@@ -154,8 +161,6 @@ class BlocksWorld(gym.Env):
             self.done = True
             return self.state, self.goal_reward, self.done, None
         (a_x, a_y), blocks, b_in_h = self._decode(self.state)
-        if (a_x, a_y) == (16, 16):
-            a_x, a_y = 16, 16
         blocks_arr = self._blocks_dict_to_arr(blocks)
         reward = -1
         if b_in_h == 0:
@@ -272,8 +277,14 @@ class BlocksWorld(gym.Env):
                 count += 1
                 if verbose:
                     string = f'agent: {xa, ya}; '
+                    if self.agent_coord_mode == 'cropped':
+                        string = f'agent: {xa+self.map_start_x, ya+self.map_start_y}; '
                     for i, (_, v) in enumerate(blocks.items()):
-                        string += f'block_{i+1}: {v["x"], v["y"]}; '
+                        x, y = v["x"], v["y"]
+                        if self.coord_modes[i] == 'cropped':
+                            x += self.map_start_x
+                            y += self.map_start_y
+                        string += f'{self.block_names[i]}: {x, y}; '
                     print(string + f'in hand: ' +
                           (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') +
                           f'action: {self._action_to_str(action)}')

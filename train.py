@@ -45,7 +45,8 @@ def q_to_policy(q, offset=0):
 
 
 def main():
-    path_to_file = 'parsing_jsons/ready_to_test/parsed_task777_planner.json'
+    # TODO: task 2, agent not moving
+    path_to_file = 'parsing_jsons/parsed/partial_0/parsed_tasks_2.json'
     parameters = {'episodes': 1000, 'gamma': 0.95, 'alpha': 0.5, 'epsilon': 0.2,
                   'verbose': True, 'plot': False, 'movement': False, 'bench': path_to_file}
     print('---Start---')

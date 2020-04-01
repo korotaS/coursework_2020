@@ -1,7 +1,7 @@
 {
   "map": {
-    "rows": 9,
-    "cols": 9,
+    "rows": 35,
+    "cols": 35,
     "walls": null
   },
   "blocks": {
@@ -9,29 +9,22 @@
       {
         "start_x": 2,
         "start_y": 2,
-        "goal_x": 5,
-        "goal_y": 5
+        "goal_x": 15,
+        "goal_y": 34
       },
     "block-b":
       {
-      "start_x": 2,
-      "start_y": 8,
-      "goal_x": 5,
-      "goal_y": 5
-      },
-    "block-c":
-      {
-      "start_x": 8,
-      "start_y": 8,
-      "goal_x": 5,
-      "goal_y": 5
+      "start_x": 15,
+      "start_y": 30,
+      "goal_x": 10,
+      "goal_y": 10
       }
   },
   "agent": {
     "start_x": 1,
     "start_y": 1,
-    "goal_x": 6,
-    "goal_y": 5,
+    "goal_x": 9,
+    "goal_y": 9,
     "holding": null
   }
 }
