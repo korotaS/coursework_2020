@@ -2,8 +2,8 @@ import json
 import os
 
 
-def parse(path):
-    with open(path, 'r') as read:
+def parse(from_path, to_path):
+    with open(from_path, 'r') as read:
         planner_data = json.load(read)
     full_rl_data = {'map': {'walls': None}}
     map_size = planner_data['map']['map-size']
@@ -48,8 +48,8 @@ def parse(path):
     conditions['start'] = rewrite_conditions(start_cond, conditions['start'])
     conditions['goal'] = rewrite_conditions(goal_cond, conditions['goal'])
     full_rl_data['blocks'] = change_order_via_conditions(blocks, conditions)
-    name = path.split('/')[-1]
-    with open('parsed/parsed_' + name, 'w+') as write:
+    name = from_path.split('/')[-1]
+    with open(to_path + 'parsed_' + name, 'w+') as write:
         write.write(json.dumps(full_rl_data, indent=4))
 
 
@@ -88,10 +88,6 @@ def change_order_via_conditions(blocks, conditions):
     for name in block_names:
         if name not in blocks_queue and contains_on(conditions['goal'][name]):
             base_block = contains_on(conditions['goal'][name])
-            # top_block = base_block
-            # while not_clear(conditions['goal'], top_block):
-            #     top_block = not_clear(conditions['goal'], top_block)
-            # base_block = top_block
             while contains_on(conditions['goal'][base_block]):
                 base_block = contains_on(conditions['goal'][base_block])
             blocks_queue.append(base_block)
@@ -102,8 +98,7 @@ def change_order_via_conditions(blocks, conditions):
     return {name: blocks[name] for name in blocks_queue}
 
 
-
-# dir_name = 'to_parse/'
-# for filename in os.listdir(dir_name):
-#     parse(dir_name + filename)
-parse('to_parse/task777_planner.json')
+dir_name = 'parsing_jsons/to_parse/'
+to_path = 'parsing_jsons/parsed/'
+for filename in os.listdir(dir_name):
+    parse(dir_name + filename, to_path)

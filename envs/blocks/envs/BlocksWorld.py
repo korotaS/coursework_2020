@@ -79,11 +79,16 @@ class BlocksWorld(gym.Env):
             b_in_h = list(blocks.keys()).index(agent['holding'])+1
         start_coord = agent['start_x'], agent['start_y']
         goal_coord = agent['goal_x'], agent['goal_y']
+        self.b_in_h_goal = 0
+        for i, val in enumerate(self.blocks_dest.values()):
+            if (val['x'], val['y']) == goal_coord:
+                self.b_in_h_goal = i + 1
+                break
         self.start_coord = start_coord
         self.goal_coord = goal_coord
         self.starting_state = self._encode(start_coord, self.blocks_start, b_in_h)
         self.state = self.starting_state
-        self.goal = self._encode(goal_coord, self.blocks_dest, 0)
+        self.goal = self._encode(goal_coord, self.blocks_dest, self.b_in_h_goal)
 
     def _encode_row_col(self, row_col):
         return row_col[0] * self.num_rows + row_col[1]
@@ -149,6 +154,8 @@ class BlocksWorld(gym.Env):
             self.done = True
             return self.state, self.goal_reward, self.done, None
         (a_x, a_y), blocks, b_in_h = self._decode(self.state)
+        if (a_x, a_y) == (16, 16):
+            a_x, a_y = 16, 16
         blocks_arr = self._blocks_dict_to_arr(blocks)
         reward = -1
         if b_in_h == 0:
@@ -185,13 +192,13 @@ class BlocksWorld(gym.Env):
                 else:
                     reward = self.illegal_action_reward
             elif action == PUTDOWN:
-                curr_block = None
-                if b_in_h > 0:
+                curr_block_dest = None
+                if b_in_h > 0 and b_in_h != self.b_in_h_goal:
                     key = list(self.blocks_dest.keys())[curr_block_index]
-                    curr_block = [self.blocks_dest[key]['x'], self.blocks_dest[key]['y']]
-                if b_in_h != 0 and self._is_near_block(a_x, a_y, curr_block):
+                    curr_block_dest = [self.blocks_dest[key]['x'], self.blocks_dest[key]['y']]
+                if b_in_h != 0 and self._is_near_block(a_x, a_y, curr_block_dest):
                     b_in_h = 0
-                    blocks_arr[curr_block_index] = curr_block
+                    blocks_arr[curr_block_index] = curr_block_dest
                     reward = self.nice_action_reward
                     self.delivered[curr_block_index] = True
                 else:
