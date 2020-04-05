@@ -56,9 +56,10 @@ class QLearningAgent(Agent):
         for i_episode in range(num_episodes):
 
             # Print out which episode we're on.
-            if (i_episode + 1) % 1 == 0:
-                print("\rEpisode {}/{}.".format(i_episode + 1, num_episodes), end="")
-                sys.stdout.flush()
+            if verbose:
+                if (i_episode + 1) % 1 == 0:
+                    print("\rEpisode {}/{}.".format(i_episode + 1, num_episodes), end="")
+                    sys.stdout.flush()
 
             state = self.environment.reset()
             state = str(state)
