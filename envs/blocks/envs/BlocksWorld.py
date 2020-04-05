@@ -70,7 +70,7 @@ class BlocksWorld(gym.Env):
         self.block_names = []
         self.delivered = []
         for name, block in blocks.items():
-            if block['start_x'] != block['goal_x'] and block['start_x'] == block['goal_x']:
+            if block['start_x'] != block['goal_x'] or block['start_x'] != block['goal_x']:
                 self.blocks_start[name] = {'x': block['start_x'], 'y': block['start_y']}
                 self.blocks_dest[name] = {'x': block['goal_x'], 'y': block['goal_y']}
                 self.delivered.append(False)
@@ -161,6 +161,7 @@ class BlocksWorld(gym.Env):
             self.done = True
             return self.state, self.goal_reward, self.done, None
         (a_x, a_y), blocks, b_in_h = self._decode(self.state)
+        b_in_h = int(b_in_h)
         blocks_arr = self._blocks_dict_to_arr(blocks)
         reward = -1
         if b_in_h == 0:
@@ -313,6 +314,7 @@ class BlocksWorld(gym.Env):
         a_x = 0
         a_y = 0
         blocks_arr = self._blocks_dict_to_arr(blocks)
+        b_in_h = int(b_in_h)
         if b_in_h == 0:
             try:
                 curr_block_index = delivered.index(False)

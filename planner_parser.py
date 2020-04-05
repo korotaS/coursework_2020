@@ -119,13 +119,13 @@ def crop_task_map(task):
     task['map']['full_cols'] = task['map']['cols']
     xs, ys = get_changing_points(task)
     minx, maxx, miny, maxy = bounding_rect_points(xs, ys)
-    sx, sy = task['agent']['start_x'], task['agent']['start_y']
-    gx, gy = task['agent']['goal_x'], task['agent']['goal_y']
-    if (sx, sy) != (gx, gy):
-        task['agent']['start_x'] = sx - minx
-        task['agent']['start_y'] = sy - miny
-        task['agent']['goal_x'] = gx - minx
-        task['agent']['goal_y'] = gy - miny
+    asx, asy = task['agent']['start_x'], task['agent']['start_y']
+    agx, agy = task['agent']['goal_x'], task['agent']['goal_y']
+    if (asx, asy) != (agx, agy):
+        task['agent']['start_x'] = asx - minx
+        task['agent']['start_y'] = asy - miny
+        task['agent']['goal_x'] = agx - minx
+        task['agent']['goal_y'] = agy - miny
         task['agent']['coord_mode'] = 'cropped'
     else:
         task['agent']['coord_mode'] = 'full'
@@ -138,6 +138,11 @@ def crop_task_map(task):
             block['goal_x'] = gx - minx
             block['goal_y'] = gy - miny
             block['coord_mode'] = 'cropped'
+            task['agent']['start_x'] = asx - minx
+            task['agent']['start_y'] = asy - miny
+            task['agent']['goal_x'] = agx - minx
+            task['agent']['goal_y'] = agy - miny
+            task['agent']['coord_mode'] = 'cropped'
         else:
             block['coord_mode'] = 'full'
     task['map']['rows'] = maxx - minx + 1
@@ -150,6 +155,7 @@ def crop_task_map(task):
 def get_changing_points(task):
     xs = []
     ys = []
+    agent_in_points = False
     sx, sy = task['agent']['start_x'], task['agent']['start_y']
     gx, gy = task['agent']['goal_x'], task['agent']['goal_y']
     if (sx, sy) != (gx, gy):
@@ -162,6 +168,12 @@ def get_changing_points(task):
         if (sx, sy) != (gx, gy):
             xs.extend([sx, gx])
             ys.extend([sy, gy])
+            if not agent_in_points:
+                agent_in_points = True
+                asx, asy = task['agent']['start_x'], task['agent']['start_y']
+                agx, agy = task['agent']['goal_x'], task['agent']['goal_y']
+                xs.extend([asx, agx])
+                ys.extend([asy, agy])
     return xs, ys
 
 
