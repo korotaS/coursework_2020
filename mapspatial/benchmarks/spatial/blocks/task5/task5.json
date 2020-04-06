@@ -1,0 +1,151 @@
+{
+  "task-name": "spatial task 5",
+  "agents":
+        ["ag1"],
+  "map": {
+            "wall": [
+              [-20, -20, 520, -20],
+              [-20, -20, -20, 520],
+              [-20, 520, 520, 520],
+              [520, -20, 520, 520]
+            ],
+            "map-size": [
+                    520,
+                    520
+                ]
+
+    },
+    "global-start" : {
+                "ag1":{
+                    "handempty": {
+                        "cause": [],
+                        "effect": []
+                },
+                "orientation": "above",
+                "activity": 4
+                },
+
+             "objects": {
+                    "ag1": {
+                        "r": 5,
+                        "x": 130.0,
+                        "y": 130.0
+                    },
+                    "block-a": {
+                        "r": 1,
+                        "x": 130.0,
+                        "y": 390.0
+                    },
+                    "block-b": {
+                        "r": 1,
+                        "x": 170.0,
+                        "y": 376.0
+                    }
+                },
+              "conditions":{
+                    "blocktype-1": {
+                      "cause":
+                              ["big", "block-a"],
+                      "effect":
+                              []
+                      },
+                    "blocktype-2": {
+                      "cause":
+                              ["big", "block-b"],
+                      "effect":
+                              []
+                      },
+                    "clear-1": {
+                            "cause":
+                                ["block-a"],
+                            "effect":
+                                []
+
+                    },
+                    "clear-2": {
+                            "cause":
+                                ["block-b"],
+                            "effect":
+                                []
+
+                    },
+                    "onground-1": {
+                            "cause":
+                                ["block-a"],
+                            "effect":
+                                []
+
+                    },
+                    "onground-2": {
+                            "cause":
+                                ["block-b"],
+                            "effect":
+                                []
+
+                    }
+              }
+
+    },
+    "global-finish": {
+                  "ag1":{
+                      "handempty": {
+                          "cause": [],
+                          "effect": []
+                      },
+                  "orientation": "above",
+                  "activity": 4
+                  },
+                    "objects": {
+                    "ag1": {
+                        "r": 5,
+                        "x": 141.0,
+                        "y": 336.0
+                    },
+                    "block-a": {
+                        "r": 1,
+                        "x": 260.0,
+                        "y": 390.0
+                    },
+                    "block-b": {
+                        "r": 1,
+                        "x": 260.0,
+                        "y": 390.0
+                    }
+                    },
+              "conditions":{
+                    "blocktype-1": {
+                      "cause":
+                              ["big", "block-a"],
+                      "effect":
+                              []
+                      },
+                    "blocktype-2": {
+                      "cause":
+                              ["big", "block-b"],
+                      "effect":
+                              []
+                      },
+                    "on-1": {
+                            "cause":
+                                ["block-a","block-b"],
+                            "effect":
+                                []
+
+                    },
+                    "clear": {
+                            "cause":
+                                ["block-a"],
+                            "effect":
+                                []
+
+                    },
+                    "onground": {
+                            "cause":
+                                ["block-b"],
+                            "effect":
+                                []
+
+                    }
+              }
+            }
+}

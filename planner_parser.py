@@ -1,15 +1,14 @@
 import json
 import os
-import numpy as np
 
 
-def parse(from_path, to_path, dir_name='', window_size=20):
+def parse(from_path, to_path, multiple=True, window_size=20):
     file_paths = []
-    if dir_name != '':
-        if not os.path.exists(to_path + dir_name):
-            os.mkdir(to_path + dir_name)
-        for filename in os.listdir(from_path + dir_name):
-            file_paths.append(from_path + dir_name + filename)
+    if multiple:
+        if not os.path.exists(to_path):
+            os.mkdir(to_path)
+        for filename in os.listdir(from_path):
+            file_paths.append(from_path + filename)
     else:
         file_paths.append(from_path)
     file_paths.sort()
@@ -63,7 +62,7 @@ def parse(from_path, to_path, dir_name='', window_size=20):
         conditions['start'] = rewrite_conditions(start_cond, conditions['start'])
         conditions['goal'] = rewrite_conditions(goal_cond, conditions['goal'])
         full_rl_data['blocks'] = change_order_via_conditions(blocks, conditions)
-        if dir_name == '':
+        if not multiple:
             name = one_file_path.split('/')[-1]
             with open(to_path + 'parsed_' + name, 'w+') as write:
                 write.write(json.dumps(full_rl_data, indent=4))
@@ -78,13 +77,13 @@ def parse(from_path, to_path, dir_name='', window_size=20):
             united_tasks_indices += str(count)
         else:
             name = 'tasks_' + united_tasks_indices + '.json'
-            with open(to_path + dir_name + 'parsed_' + name, 'w+') as write:
+            with open(to_path + 'parsed_' + name, 'w+') as write:
                 write.write(json.dumps(crop_task_map(united_task), indent=4))
             united_task = full_rl_data
             united_tasks_indices = str(count)
         count += 1
     name = 'tasks_' + united_tasks_indices + '.json'
-    with open(to_path + dir_name + 'parsed_' + name, 'w+') as write:
+    with open(to_path + 'parsed_' + name, 'w+') as write:
         write.write(json.dumps(crop_task_map(united_task), indent=4))
 
 
@@ -224,9 +223,3 @@ def change_order_via_conditions(blocks, conditions):
         elif conditions['start'][name] == [] or conditions['goal'][name] == []:
             blocks_queue.append(name)
     return {name: blocks[name] for name in blocks_queue}
-
-
-from_p = 'parsing_jsons/to_parse/'
-to_p = 'parsing_jsons/parsed/'
-dir_n = 'partial_0/'
-parse(from_p, to_p, dir_n)

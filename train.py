@@ -1,15 +1,17 @@
-import time
-import gym
-import numpy as np
-import envs.gridworld
-import envs.blocks
-import matplotlib.pyplot as plt
-from utils.option_methods import load_option
-from agents.qlearning.qlearning_agent import QLearningAgent, QLearningWithOptionsAgent
 import json
 import os
-from multiprocessing import Pool
+import sys
+import time
 from copy import deepcopy
+from multiprocessing import Pool
+
+import gym
+import numpy as np
+
+from agents.qlearning.qlearning_agent import QLearningAgent
+from map_spatial_wrapper.test2 import main as planner_main
+import envs.blocks
+from planner_parser import parse
 
 
 def train(parameters):
@@ -31,25 +33,24 @@ def train(parameters):
     if parameters['plot']:
         env.render(policy=policy)
 
-    if parameters['verbose'] or parameters['movement']:
-        print(parameters['bench'], ' done!')
+    if parameters['verbose'] or parameters['movement'] or parameters['save_path'] is not None:
         agent.environment.build_policy_to_goal(policy=policy,
                                                movement=parameters['movement'],
-                                               verbose=parameters['verbose'])
+                                               verbose=parameters['verbose'],
+                                               save_path=parameters['save_path'])
     env.close()
+    print(parameters['bench'], ' done!')
     return average_eps_reward
 
 
 def q_to_policy(q, offset=0):
-    optimalPolicy = {}
+    optimal_policy = {}
     for state in q:
-        optimalPolicy[state] = np.argmax(q[state]) + offset
-    return optimalPolicy
+        optimal_policy[state] = np.argmax(q[state]) + offset
+    return optimal_policy
 
 
-def train_one_file(path):
-    parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
-                  'verbose': True, 'plot': False, 'movement': False, 'bench': path}
+def train_one_file(parameters):
     print('---Start---')
     start = time.time()
     average_reward = train(parameters)
@@ -59,13 +60,12 @@ def train_one_file(path):
     print('---End---')
 
 
-def train_multiple_files(paths):
-    parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
-                  'verbose': True, 'plot': False, 'movement': False, 'bench': ''}
+def train_rl_multiple_files(paths, parameters):
     params_arr = []
-    for path in paths:
+    for i, path in enumerate(paths):
         curr_params = deepcopy(parameters)
         curr_params['bench'] = path
+        curr_params['save_path'] += f'rl_output_{i}.txt'
         params_arr.append(curr_params)
     pool = Pool(processes=len(paths))
     pool.map(train, params_arr)
@@ -73,10 +73,36 @@ def train_multiple_files(paths):
     pool.join()
 
 
+def train_planner(task_num):
+    planner_main(sys.argv[1:], str(task_num), f'tasks_jsons/task{task_num}/planner_steps/')
+
+
+def create_dir(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+
 def main():
-    path_to_file = 'parsing_jsons/parsed/partial_0/parsed_tasks_0.json'
-    files = [f'parsing_jsons/parsed/partial_0/parsed_tasks_{i}.json' for i in range(6)]
-    train_multiple_files(files)
+    task_num = '1'
+    path_prefix = f'tasks_jsons/task{task_num}/'
+    planner_steps_path = path_prefix + 'planner_steps/'
+    planner_steps_parsed_path = path_prefix + 'planner_steps_parsed/'
+    rl_agent_steps_path = path_prefix + f'rl_agent_steps/'
+    create_dir(path_prefix)
+    create_dir(planner_steps_path)
+    create_dir(planner_steps_parsed_path)
+    create_dir(rl_agent_steps_path)
+    train_planner(task_num)
+    print('PLANNER FINISHED, PARSING TO RL STARTED')
+    parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
+    print('PARSING TO RL FINISHED, RL LEARNING STARTED')
+    # parsed_tasks_len = len([name for name in os.listdir(planner_steps_parsed_path)])
+    # tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
+    #                for i in range(parsed_tasks_len)]
+    # parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
+    #               'verbose': False, 'plot': False, 'movement': False, 'bench': '',
+    #               'save_path': rl_agent_steps_path}
+    # train_rl_multiple_files(tasks_files, parameters)
 
 
 if __name__ == '__main__':

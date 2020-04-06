@@ -250,65 +250,73 @@ class BlocksWorld(gym.Env):
         elif action == PUTDOWN:
             return 'put down'
 
-    def build_policy_to_goal(self, policy, verbose=False, movement=False):
-        if type(policy) is not None:
-            curr_state = self.starting_state
-            self.policy_to_goal = []
-            delivered = [False for _ in range(self.num_blocks)]
-            for i, name in enumerate(self.blocks_dest):
-                if self.blocks_dest[name] == self.blocks_start[name]:
-                    delivered[i] = True
-            count = 0
-            full_path = ''
-            print('\nCalculating full path...')
+    def build_policy_to_goal(self, policy, verbose=False, movement=False, save_path=None):
+        if policy is None:
+            raise AttributeError
+        full_agent_log = ''
+        curr_state = self.starting_state
+        self.policy_to_goal = []
+        delivered = [False for _ in range(self.num_blocks)]
+        for i, name in enumerate(self.blocks_dest):
+            if self.blocks_dest[name] == self.blocks_start[name]:
+                delivered[i] = True
+        full_path = ''
+        if movement:
+            dir_name = time.strftime('%d_%b_%Y_%H_%M_%S')
+            full_path = f'movements/{dir_name}/'
+            os.mkdir(full_path)
+        count = 0
+        while curr_state != self.goal:
+            if count == 1000:
+                print('some troubles with goal path...')
+                return
+            (xa, ya), blocks, b_i_h = self._decode(curr_state)
+            try:
+                action = policy[str(curr_state)]
+            except KeyError:
+                print('some troubles with goal path...')
+                return
             if movement:
-                dir_name = time.strftime('%d_%b_%Y_%H_%M_%S')
-                full_path = f'movements/{dir_name}/'
-                os.mkdir(full_path)
-            while curr_state != self.goal:
-                (xa, ya), blocks, b_i_h = self._decode(curr_state)
-                try:
-                    action = policy[str(curr_state)]
-                except KeyError:
-                    print('some troubles with goal path...')
-                    return
-                if movement:
-                    self.render([curr_state], save_path=full_path+f'{count}.png',
-                                name_prefix=f'Agent at {count}th time step')
-                count += 1
-                if verbose:
-                    string = f'agent: {xa, ya}; '
-                    if self.agent_coord_mode == 'cropped':
-                        string = f'agent: {xa+self.map_start_x, ya+self.map_start_y}; '
-                    for i, (_, v) in enumerate(blocks.items()):
-                        x, y = v["x"], v["y"]
-                        if self.coord_modes[i] == 'cropped':
-                            x += self.map_start_x
-                            y += self.map_start_y
-                        string += f'{self.block_names[i]}: {x, y}; '
-                    print(string + f'in hand: ' +
-                          (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') +
-                          f'action: {self._action_to_str(action)}')
-                (dxa, dya), new_blocks, db_in_h, delivered = self._action_as_point(action,
-                                                                                   blocks,
-                                                                                   b_i_h,
-                                                                                   [xa, ya],
-                                                                                   delivered)
-                curr_state = self._encode((xa+dxa, ya+dya),
-                                          new_blocks,
-                                          db_in_h)
-                self.policy_to_goal.append(curr_state)
-            if movement:
-                print('Making gif...')
-                images = []
-                gif_path = full_path + 'movement.gif'
-                if os.path.exists(gif_path):
-                    os.remove(gif_path)
-                one_frame_duration = 0.5
-                kwargs = {'duration': one_frame_duration}
-                for filename in sorted(os.listdir(full_path), key=lambda file: int(file.split('.')[0])):
-                    images.append(imageio.imread(full_path + filename))
-                imageio.mimsave(gif_path, images, 'GIF', **kwargs)
+                self.render([curr_state], save_path=full_path+f'{count}.png',
+                            name_prefix=f'Agent at {count}th time step')
+            count += 1
+            curr_state_string = f'agent: {xa, ya}; '
+            if self.agent_coord_mode == 'cropped':
+                curr_state_string = f'agent: {xa+self.map_start_x, ya+self.map_start_y}; '
+            for i, (_, v) in enumerate(blocks.items()):
+                x, y = v["x"], v["y"]
+                if self.coord_modes[i] == 'cropped':
+                    x += self.map_start_x
+                    y += self.map_start_y
+                curr_state_string += f'{self.block_names[i]}: {x, y}; '
+            curr_state_string += f'in hand: ' + (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') + \
+                                 f'action: {self._action_to_str(action)}'
+            if verbose:
+                print(curr_state_string)
+            if save_path is not None:
+                full_agent_log += curr_state_string + '\n'
+            (dxa, dya), new_blocks, db_in_h, delivered = self._action_as_point(action,
+                                                                               blocks,
+                                                                               b_i_h,
+                                                                               [xa, ya],
+                                                                               delivered)
+            curr_state = self._encode((xa+dxa, ya+dya),
+                                      new_blocks,
+                                      db_in_h)
+            self.policy_to_goal.append(curr_state)
+        if movement:
+            print('Making gif...')
+            images = []
+            gif_path = full_path + 'movement.gif'
+            if os.path.exists(gif_path):
+                os.remove(gif_path)
+            one_frame_duration = 0.5
+            kwargs = {'duration': one_frame_duration}
+            for filename in sorted(os.listdir(full_path), key=lambda file: int(file.split('.')[0])):
+                images.append(imageio.imread(full_path + filename))
+            imageio.mimsave(gif_path, images, 'GIF', **kwargs)
+        with open(save_path, 'w+') as write:
+            write.write(full_agent_log)
 
     def _action_as_point(self, action, blocks, b_in_h, old_coords, delivered):
         a_x = 0
