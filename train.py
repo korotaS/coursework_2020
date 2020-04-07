@@ -83,7 +83,7 @@ def create_dir(path):
 
 
 def main():
-    task_num = '1'
+    task_num = '0'
     path_prefix = f'tasks_jsons/task{task_num}/'
     planner_steps_path = path_prefix + 'planner_steps/'
     planner_steps_parsed_path = path_prefix + 'planner_steps_parsed/'
@@ -96,13 +96,13 @@ def main():
     print('PLANNER FINISHED, PARSING TO RL STARTED')
     parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
     print('PARSING TO RL FINISHED, RL LEARNING STARTED')
-    # parsed_tasks_len = len([name for name in os.listdir(planner_steps_parsed_path)])
-    # tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
-    #                for i in range(parsed_tasks_len)]
-    # parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
-    #               'verbose': False, 'plot': False, 'movement': False, 'bench': '',
-    #               'save_path': rl_agent_steps_path}
-    # train_rl_multiple_files(tasks_files, parameters)
+    parsed_tasks_len = len([name for name in os.listdir(planner_steps_parsed_path)])
+    tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
+                   for i in range(parsed_tasks_len)]
+    parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
+                  'verbose': False, 'plot': False, 'movement': False, 'bench': '',
+                  'save_path': rl_agent_steps_path}
+    train_rl_multiple_files(tasks_files, parameters)
 
 
 if __name__ == '__main__':
