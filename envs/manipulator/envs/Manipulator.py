@@ -9,6 +9,7 @@ DEGREES = 15
 ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', 'grab', 'release']
 LENGTHS = [0, 2, 1.5]
 BOUNDS = [[0, 359], [-75, 75], [-135, 135]]
+POSITIONS = [24, 11, 19]
 BLOCK_TO_ANGLE = {
     0: 315,
     1: 0,
@@ -38,7 +39,6 @@ class Manipulator(gym.Env):
                  windiness=0.3):
         self.state = None
         self.situation = situation
-        self.num_of_positions = (360 / DEGREES)
         self.num_of_joints = int((len(ACTIONS) - 2) / 2)
         self._map_init()
         self.done = False
@@ -47,7 +47,7 @@ class Manipulator(gym.Env):
         self.goal_reward = goal_reward
         self.nice_action_reward = 5
         self.illegal_action_reward = -5
-        self.observation_space = spaces.Discrete(self.num_of_positions**self.num_of_joints * 2 * 8)
+        self.observation_space = spaces.Discrete(self._calculate_obs_space_len())
         self.action_space = spaces.Discrete(len(ACTIONS))
         self.windiness = windiness
         self.np_random = None
@@ -70,8 +70,15 @@ class Manipulator(gym.Env):
             self.goal_man_coords = self.block_coords + movement
             self.goal_grabbed = False
         self.best_block_dist, self.best_man_dist = self._calculate_perfect_positions()
-        self.state = self._encode(self.manipulator_angles, self.grabbed, self.block_pos)
+        self.state = self._encode(self.manipulator_angles, self.grabbed)
         self.starting_state = self.state
+
+    def _calculate_obs_space_len(self):
+        res = 1
+        for pos in POSITIONS:
+            res *= pos
+        res *= 2
+        return res
 
     def _calculate_perfect_positions(self):
         def lb(bound):
@@ -106,7 +113,6 @@ class Manipulator(gym.Env):
                             best_block_dist = block_dist
         return best_block_dist, best_man_dist
 
-
     def _calculate_hand_pos(self, manipulator_angles):
         # without rotation
         def angle_n(n):
@@ -133,46 +139,25 @@ class Manipulator(gym.Env):
         point[2] += 1  # height of platform that holds the manipulator
         return point
 
-    def _encode(self, manipulator_angles, grabbed, block_pos):
+    def _encode(self, manipulator_angles, grabbed):
         res = 0
-        angles_minus = [1 if angle < 0 else 0 for angle in manipulator_angles]
         for i in range(self.num_of_joints-1):
-            res += abs(manipulator_angles[i] / DEGREES)
-            res *= self.num_of_positions
-        res += abs(manipulator_angles[-1] / DEGREES)
-
-        res *= 2
-
-        for i in range(self.num_of_joints-1):
-            res += angles_minus[i]
-            res *= 2
-        res += angles_minus[-1]
-
+            res += (manipulator_angles[i] - BOUNDS[i][0]) / DEGREES
+            res *= POSITIONS[i]
+        res += (manipulator_angles[-1] - BOUNDS[-1][0]) / DEGREES
         res = res * 2 + grabbed
-        res = res * 8 + block_pos
         return res
 
     def _decode(self, i):
-        block_pos = i % 8
-        i //= 8
         grabbed = i % 2
         i //= 2
-
-        angles_minus = []
-        for _ in range(self.num_of_joints):
-            angles_minus.append(i % 2)
-            i //= 2
-        angles_minus.reverse()
-
         manipulator_angles = []
-        for _ in range(self.num_of_joints):
-            manipulator_angles.append((i % self.num_of_positions)*DEGREES)
-            i //= self.num_of_positions
+        for j in range(self.num_of_joints-1):
+            manipulator_angles.append(BOUNDS[-j-1][0] + (i % POSITIONS[-j-2])*DEGREES)
+            i //= POSITIONS[-j-2]
+        manipulator_angles.append(BOUNDS[0][0] + (i % POSITIONS[0]) * DEGREES)
         manipulator_angles.reverse()
-
-        manipulator_angles = [-angle if angles_minus[i] == 1 else angle
-                              for i, angle in enumerate(manipulator_angles)]
-        return manipulator_angles, grabbed, block_pos
+        return manipulator_angles, grabbed
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -187,7 +172,7 @@ class Manipulator(gym.Env):
 
     def step(self, action):
         assert self.action_space.contains(action)
-        manipulator_angles, grabbed, block_pos = self._decode(self.state)
+        manipulator_angles, grabbed = self._decode(self.state)
         old_man_coords = self._calculate_hand_pos(manipulator_angles)
         old_distance = self.distance(old_man_coords, self.block_coords)
         if (self.task == 'grab' and grabbed or self.task == 'release' and not grabbed) and \
@@ -225,7 +210,7 @@ class Manipulator(gym.Env):
             else:
                 grabbed = False
                 reward = self.nice_action_reward
-        self.state = self._encode(manipulator_angles, grabbed, block_pos)
+        self.state = self._encode(manipulator_angles, grabbed)
         return self.state, reward, self.done, None
 
     def reset(self):
@@ -261,7 +246,7 @@ class Manipulator(gym.Env):
             if count == 1000:
                 print('some troubles with goal path...')
                 return
-            manipulator_angles, grabbed, block_pos = self._decode(curr_state)
+            manipulator_angles, grabbed = self._decode(curr_state)
             print(manipulator_angles, grabbed)
             if self.task == 'grab' and grabbed or self.task == 'release' and not grabbed:
                 done = True
@@ -271,7 +256,7 @@ class Manipulator(gym.Env):
                 print('some troubles with goal path...')
                 return
             new_manipulator_angles, new_grabbed = self._action_as_point(action, manipulator_angles, grabbed)
-            curr_state = self._encode(new_manipulator_angles, new_grabbed, block_pos)
+            curr_state = self._encode(new_manipulator_angles, new_grabbed)
             self.policy_to_goal.append(curr_state)
 
     def _action_as_point(self, action, manipulator_angles, grabbed):
