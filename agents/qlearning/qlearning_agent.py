@@ -65,9 +65,6 @@ class QLearningAgent(Agent):
             state = str(state)
             total_reward = 0.0
             for t in itertools.count():
-                # if verbose:
-                #     if t % 1000 == 0:
-                #         print("\rStep: {}".format(t))
                 action = self.act(state)
                 next_state, reward, done, _ = self.environment.step(action)
                 next_state = str(next_state)
