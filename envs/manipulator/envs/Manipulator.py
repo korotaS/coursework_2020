@@ -59,7 +59,8 @@ class Manipulator(gym.Env):
     def _map_init(self):
         self.manipulator_angles = self.situation['manipulator_angles']
         self.grabbed = self.situation['grabbed']
-        self.block_pos = self.situation['block_pos']
+        # self.block_pos = self.situation['block_pos']
+        self.block_pos = np.random.choice(list(range(8)))
         self.block_angle = BLOCK_TO_ANGLE[self.block_pos]
         self.block_coords = np.array(BLOCK_TO_COORDS[self.block_pos])
         self.task = self.situation['task']
@@ -182,6 +183,11 @@ class Manipulator(gym.Env):
             normed.append((angle-min_)/(max_-min_))
         return normed
 
+    def _norm_coords(self):
+        def norm(coord):
+            return (coord+1.5)/3
+        return np.array([norm(coord) for coord in self.block_coords])
+
     def step(self, action, return_all=False):
         assert self.action_space.contains(action)
         manipulator_angles, grabbed = self._decode(self.state)
@@ -191,7 +197,8 @@ class Manipulator(gym.Env):
                 self.distance(old_man_coords, self.goal_man_coords) < 0.2:
             self.done = True
             if return_all:
-                return np.array(self.normalize(manipulator_angles) + [grabbed]), self.goal_reward, self.done, None
+                return np.append(np.array(self.normalize(manipulator_angles) + [grabbed]), self._norm_coords()), \
+                       self.goal_reward, self.done, None
             return self.state, self.goal_reward, self.done, None
         reward = 0
         if action < self.num_of_joints * 2:
@@ -226,7 +233,8 @@ class Manipulator(gym.Env):
                 reward = self.nice_action_reward
         self.state = self._encode(manipulator_angles, grabbed)
         if return_all:
-            return np.array(self.normalize(manipulator_angles) + [grabbed]), reward, self.done, None
+            return np.append(np.array(self.normalize(manipulator_angles) + [grabbed]), self._norm_coords()), \
+                   reward, self.done, None
         return self.state, reward, self.done, None
 
     def reset(self, return_all=False):
@@ -234,7 +242,7 @@ class Manipulator(gym.Env):
         self._map_init()
         if return_all:
             man_angles, grabbed = self._decode(self.state)
-            return np.array(self.normalize(man_angles) + [grabbed])
+            return np.append(np.array(self.normalize(man_angles) + [grabbed]), self._norm_coords())
         return self.state
 
     def render(self, **kwargs):
