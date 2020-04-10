@@ -2,14 +2,17 @@ import gym
 import numpy as np
 from gym import spaces
 from gym.utils import seeding
+from agents.dqn.rewards import tolerance
 
 
 DEGREES = 15
 # ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', '4CW', '4CCW', 'grab', 'release']
 ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', 'grab', 'release']
-LENGTHS = [0, 2, 1.5]
-BOUNDS = [[0, 359], [-75, 75], [-135, 135]]
+LENGTHS = [0, 1.5, 1.5]
+BOUNDS = [[0, 359], [0, 150], [-120, 120]]
 POSITIONS = [24, 11, 19]
+TOL_BOUNDS = (0, 0.2)
+TOL_MARGIN = 2
 BLOCK_TO_ANGLE = {
     0: 315,
     1: 0,
@@ -35,7 +38,7 @@ BLOCK_TO_COORDS = {
 class Manipulator(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, situation, goal_reward=10.0, step_reward=-1.0,
+    def __init__(self, situation, goal_reward=50.0, step_reward=-1.0,
                  windiness=0.3):
         self.state = None
         self.situation = situation
@@ -45,9 +48,9 @@ class Manipulator(gym.Env):
         # Rewards
         self.step_reward = step_reward
         self.goal_reward = goal_reward
-        self.nice_action_reward = 5
+        self.nice_action_reward = 50
         self.illegal_action_reward = -5
-        self.observation_space = spaces.Discrete(self._calculate_obs_space_len())
+        self.observation_space = spaces.Discrete(self.num_of_joints+1)
         self.action_space = spaces.Discrete(len(ACTIONS))
         self.windiness = windiness
         self.np_random = None
@@ -168,16 +171,27 @@ class Manipulator(gym.Env):
         return np.linalg.norm(point2 - point1)
 
     def reward(self, old_d, new_d):
-        return -5 if old_d - new_d <= 0 else 1
+        # return -5 if old_d - new_d <= 0 else 1
+        return tolerance(new_d, bounds=TOL_BOUNDS, margin=TOL_MARGIN) / 10
 
-    def step(self, action):
+    def normalize(self, manipulator_angles):
+        normed = []
+        for i, angle in enumerate(manipulator_angles):
+            min_ = BOUNDS[i][0]
+            max_ = BOUNDS[i][1]
+            normed.append((angle-min_)/(max_-min_))
+        return normed
+
+    def step(self, action, return_all=False):
         assert self.action_space.contains(action)
         manipulator_angles, grabbed = self._decode(self.state)
         old_man_coords = self._calculate_hand_pos(manipulator_angles)
         old_distance = self.distance(old_man_coords, self.block_coords)
         if (self.task == 'grab' and grabbed or self.task == 'release' and not grabbed) and \
-                self.distance(old_man_coords, self.goal_man_coords) < 0.25:
+                self.distance(old_man_coords, self.goal_man_coords) < 0.2:
             self.done = True
+            if return_all:
+                return np.array(self.normalize(manipulator_angles) + [grabbed]), self.goal_reward, self.done, None
             return self.state, self.goal_reward, self.done, None
         reward = 0
         if action < self.num_of_joints * 2:
@@ -199,42 +213,33 @@ class Manipulator(gym.Env):
                     new_distance = self.distance(new_man_pos, self.block_coords)
                     reward = self.reward(old_distance, new_distance)
         elif action == self.num_of_joints * 2:  # grab
-            if grabbed or self.task != 'grab' or old_distance != self.best_block_dist:
+            if grabbed or self.task != 'grab' or old_distance > 0.2:
                 reward = self.illegal_action_reward
             else:
                 grabbed = True
                 reward = self.nice_action_reward
         elif action == self.num_of_joints * 2 + 1:  # release
-            if not grabbed or self.task != 'release' or old_distance != self.best_block_dist:
+            if not grabbed or self.task != 'release' or old_distance > 0.2:
                 reward = self.illegal_action_reward
             else:
                 grabbed = False
                 reward = self.nice_action_reward
         self.state = self._encode(manipulator_angles, grabbed)
+        if return_all:
+            return np.array(self.normalize(manipulator_angles) + [grabbed]), reward, self.done, None
         return self.state, reward, self.done, None
 
-    def reset(self):
+    def reset(self, return_all=False):
         self.done = False
         self._map_init()
+        if return_all:
+            man_angles, grabbed = self._decode(self.state)
+            return np.array(self.normalize(man_angles) + [grabbed])
         return self.state
 
     def render(self, **kwargs):
         pass
 
-    # def _action_to_str(self, action):
-    #     if action == UP:
-    #         return 'up'
-    #     elif action == DOWN:
-    #         return 'down'
-    #     elif action == RIGHT:
-    #         return 'right'
-    #     elif action == LEFT:
-    #         return 'left'
-    #     elif action == PICKUP:
-    #         return 'pick up'
-    #     elif action == PUTDOWN:
-    #         return 'put down'
-    #
     def build_policy_to_goal(self, policy, verbose=False, movement=False, save_path=None):
         if policy is None:
             raise AttributeError

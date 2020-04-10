@@ -12,7 +12,7 @@ def train(parameters):
     epsilon = parameters['epsilon']
     env_name = "Manipulator-v1"
     situation = {
-        'manipulator_angles': [270, -45, 0],
+        'manipulator_angles': [270, 0, 0],
         'grabbed': False,
         'block_pos': 3,
         'task': 'grab'
@@ -33,7 +33,7 @@ def q_to_policy(q, offset=0):
 
 
 def main():
-    parameters = {'episodes': 100, 'gamma': 0.99, 'alpha': 0.4, 'epsilon': 0.2}
+    parameters = {'episodes': 100, 'gamma': 0.9, 'alpha': 0.4, 'epsilon': 0.2}
     train(parameters)
 
 
