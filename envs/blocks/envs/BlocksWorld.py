@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import time
 import imageio
+import json
 
 COLOURS = {'empty': [1, 1, 1],
            'wall': [0, 0, 0],
@@ -253,7 +254,7 @@ class BlocksWorld(gym.Env):
     def build_policy_to_goal(self, policy, verbose=False, movement=False, save_path=None):
         if policy is None:
             raise AttributeError
-        full_agent_log = ''
+        full_agent_log_arr = []
         curr_state = self.starting_state
         self.policy_to_goal = []
         delivered = [False for _ in range(self.num_blocks)]
@@ -266,12 +267,14 @@ class BlocksWorld(gym.Env):
             full_path = f'movements/{dir_name}/'
             os.mkdir(full_path)
         count = 0
+        action = -1
         while curr_state != self.goal:
             if count == 1000:
                 print('some troubles with goal path...')
                 return
             (xa, ya), blocks, b_i_h = self._decode(curr_state)
             try:
+                prev_action = action
                 action = policy[str(curr_state)]
             except KeyError:
                 print('some troubles with goal path...')
@@ -281,25 +284,33 @@ class BlocksWorld(gym.Env):
                             name_prefix=f'Agent at {count}th time step')
             count += 1
             curr_state_string = f'agent: {xa, ya}; '
+            curr_state_dict = {'agent': [xa, ya]}
             if self.agent_coord_mode == 'cropped':
                 curr_state_string = f'agent: {xa+self.map_start_x, ya+self.map_start_y}; '
+                curr_state_dict = {'agent': [xa+self.map_start_x, ya+self.map_start_y]}
             for i, (_, v) in enumerate(blocks.items()):
                 x, y = v["x"], v["y"]
                 if self.coord_modes[i] == 'cropped':
                     x += self.map_start_x
                     y += self.map_start_y
                 curr_state_string += f'{self.block_names[i]}: {x, y}; '
+                curr_state_dict[self.block_names[i]] = [x, y]
             curr_state_string += f'in hand: ' + (f'block_{b_i_h}; ' if b_i_h != 0 else 'nothing; ') + \
                                  f'action: {self._action_to_str(action)}'
+            curr_state_dict['in_hand'] = f'block_{b_i_h}' if b_i_h != 0 else 'nothing'
+            curr_state_dict['action'] = self._action_to_str(action)
             if verbose:
                 print(curr_state_string)
+            (dxa, dya), new_blocks, db_in_h, delivered, b_p = self._action_as_point(action,
+                                                                                    blocks,
+                                                                                    b_i_h,
+                                                                                    [xa, ya],
+                                                                                    delivered,
+                                                                                    prev_action)
+            if b_p != -1:
+                curr_state_dict['block_pos'] = b_p
             if save_path is not None:
-                full_agent_log += curr_state_string + '\n'
-            (dxa, dya), new_blocks, db_in_h, delivered = self._action_as_point(action,
-                                                                               blocks,
-                                                                               b_i_h,
-                                                                               [xa, ya],
-                                                                               delivered)
+                full_agent_log_arr.append(curr_state_dict)
             curr_state = self._encode((xa+dxa, ya+dya),
                                       new_blocks,
                                       db_in_h)
@@ -316,13 +327,49 @@ class BlocksWorld(gym.Env):
                 images.append(imageio.imread(full_path + filename))
             imageio.mimsave(gif_path, images, 'GIF', **kwargs)
         with open(save_path, 'w+') as write:
-            write.write(full_agent_log)
+            # write.write(full_agent_log)
+            write.write(json.dumps(full_agent_log_arr, indent=4))
 
-    def _action_as_point(self, action, blocks, b_in_h, old_coords, delivered):
+    def _calc_block_pos_default(self, block, agent):
+        ax, ay = agent
+        bx, by = block
+        if bx < ax:
+            if by < ay:
+                return 0
+            if by == ay:
+                return 1
+            if by > ay:
+                return 2
+        elif bx == ax:
+            if by < ba:
+                return 3
+            if by > ay:
+                return 4
+        else:
+            if by < ay:
+                return 5
+            if by == ay:
+                return 6
+            if by > ay:
+                return 7
+
+    def _calc_block_pos(self, prev_action, block, agent):
+        default_pose = self._calc_block_pos_default(block, agent)
+        if prev_action == UP:
+            return default_pose
+        if prev_action == DOWN:
+            return 7 - default_pose
+        if prev_action == RIGHT:
+            return [5, 3, 0, 6, 1, 7, 4, 2][default_pose]
+        if prev_action == LEFT:
+            return [2, 4, 7, 1, 6, 0, 3, 5][default_pose]
+
+    def _action_as_point(self, action, blocks, b_in_h, old_coords, delivered, prev_action):
         a_x = 0
         a_y = 0
         blocks_arr = self._blocks_dict_to_arr(blocks)
         b_in_h = int(b_in_h)
+        block_pos = -1
         if b_in_h == 0:
             try:
                 curr_block_index = delivered.index(False)
@@ -349,6 +396,7 @@ class BlocksWorld(gym.Env):
         elif action == PICKUP:
             if b_in_h == 0:
                 b_in_h = curr_block_index + 1
+                block_pos = self._calc_block_pos(prev_action, blocks_arr[curr_block_index], old_coords)
                 blocks_arr[curr_block_index] = old_coords
         elif action == PUTDOWN:
             if b_in_h != 0:
@@ -357,8 +405,9 @@ class BlocksWorld(gym.Env):
                 key = list(self.blocks_dest.keys())[curr_block_index]
                 curr_block = [self.blocks_dest[key]['x'], self.blocks_dest[key]['y']]
                 blocks_arr[curr_block_index] = curr_block
+                block_pos = self._calc_block_pos(prev_action, blocks_arr[curr_block_index], old_coords)
         blocks = self._blocks_arr_to_dict(blocks_arr)
-        return (a_x, a_y), blocks, b_in_h, delivered
+        return (a_x, a_y), blocks, b_in_h, delivered, block_pos
 
     # drawing and animation methods
 
