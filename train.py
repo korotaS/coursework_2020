@@ -76,8 +76,8 @@ def train_rl_multiple_files(paths, parameters):
     pool.join()
 
 
-def apply_manipulator_model(situations_path):
-    with open(situations_path, 'r') as read:
+def apply_manipulator_model(situations_path, to_path):
+    with open(situations_path + 'situations.json', 'r') as read:
         situations = json.load(read)
     env_name = "Manipulator-v1"
     current_situation = situations[0]
@@ -86,13 +86,22 @@ def apply_manipulator_model(situations_path):
         agent = DQNAgent(env.num_of_joints + 1 + 1, env.action_space.n, seed=0)
         agent.qnetwork_local.load_state_dict(torch.load('agents/dqn/models/model.pth'))
         state = env.reset(return_all=True)
+        solution = []
         for t in range(100):
             action = agent.act(np.array(state), 0)
             next_state, reward, done, _ = env.step(action, return_all=True)
             agent.step(state, action, reward, next_state, done)
+            curr_state = {
+                'manipulator': env.denormalize(state[:env.num_of_joints]),
+                'grabbed': bool(state[env.num_of_joints]),
+                'action': env.action_to_str(action)
+            }
+            solution.append(curr_state)
             state = next_state
             if done:
                 break
+        with open(to_path + f'{current_situation["id"]}.json', 'w+') as write:
+            write.write(json.dumps(solution, indent=4))
         new_man_state = env.denormalize(state[:env.num_of_joints])
         if i != len(situations)-1:
             current_situation = situations[i + 1]
@@ -107,6 +116,7 @@ def extract_situations(from_path, to_path):
         'block_pos': 0,
         'task': 'grab'
     }
+    id = 0
     for name in sorted(os.listdir(from_path), key=lambda file: int(file.split('.')[0].split('_')[-1])):
         filename = from_path + name
         with open(filename, 'r') as read:
@@ -118,7 +128,9 @@ def extract_situations(from_path, to_path):
                 curr_sit['grabbed'] = not grab
                 curr_sit['task'] = 'grab' if grab else 'release'
                 curr_sit['block_pos'] = step['block_pos']
+                curr_sit['id'] = id
                 situations.append(curr_sit)
+                id += 1
     with open(to_path+'situations.json', 'w+') as write:
         write.write(json.dumps(situations, indent=4))
 
@@ -138,25 +150,27 @@ def main():
     planner_steps_path = path_prefix + 'planner_steps/'
     planner_steps_parsed_path = path_prefix + 'planner_steps_parsed/'
     rl_agent_steps_path = path_prefix + f'rl_agent_steps/'
-    manipulator_situations_path = path_prefix + 'manipulator_sits/'
+    manipulator_situations_path = path_prefix + 'manipulator_sits_raw/'
+    manipulator_situations_solved_path = path_prefix + 'manipulator_sits_solved/'
     create_dir(path_prefix)
     create_dir(planner_steps_path)
     create_dir(planner_steps_parsed_path)
     create_dir(rl_agent_steps_path)
     create_dir(manipulator_situations_path)
-    # train_planner(task_num)
-    # print('PLANNER FINISHED, PARSING TO RL STARTED')
-    # parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
-    # print('PARSING TO RL FINISHED, RL LEARNING STARTED')
-    # parsed_tasks_len = len(os.listdir(planner_steps_parsed_path))
-    # tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
-    #                for i in range(parsed_tasks_len)]
-    # parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
-    #               'verbose': False, 'plot': False, 'movement': False, 'bench': '',
-    #               'save_path': rl_agent_steps_path}
-    # train_rl_multiple_files(tasks_files, parameters)
-    # extract_situations(rl_agent_steps_path, manipulator_situations_path)
-    apply_manipulator_model(manipulator_situations_path + 'situations.json')
+    create_dir(manipulator_situations_solved_path)
+    train_planner(task_num)
+    print('PLANNER FINISHED, PARSING TO RL STARTED')
+    parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
+    print('PARSING TO RL FINISHED, RL LEARNING STARTED')
+    parsed_tasks_len = len(os.listdir(planner_steps_parsed_path))
+    tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
+                   for i in range(parsed_tasks_len)]
+    parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
+                  'verbose': False, 'plot': False, 'movement': False, 'bench': '',
+                  'save_path': rl_agent_steps_path}
+    train_rl_multiple_files(tasks_files, parameters)
+    extract_situations(rl_agent_steps_path, manipulator_situations_path)
+    apply_manipulator_model(manipulator_situations_path, manipulator_situations_solved_path)
 
 
 if __name__ == '__main__':

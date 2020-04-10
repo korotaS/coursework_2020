@@ -117,6 +117,9 @@ class Manipulator(gym.Env):
                             best_block_dist = block_dist
         return best_block_dist, best_man_dist
 
+    def action_to_str(self, action):
+        return ACTIONS[action]
+
     def _calculate_hand_pos(self, manipulator_angles):
         # without rotation
         def angle_n(n):
