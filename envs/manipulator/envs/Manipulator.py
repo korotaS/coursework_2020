@@ -11,6 +11,7 @@ ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', 'grab', 'release']
 LENGTHS = [0, 1.5, 1.5]
 BOUNDS = [[0, 359], [0, 150], [-120, 120]]
 POSITIONS = [24, 11, 19]
+ENC_DEC = max(POSITIONS)
 TOL_BOUNDS = (0, 0.2)
 TOL_MARGIN = 2
 BLOCK_TO_ANGLE = {
@@ -59,8 +60,8 @@ class Manipulator(gym.Env):
     def _map_init(self):
         self.manipulator_angles = self.situation['manipulator_angles']
         self.grabbed = self.situation['grabbed']
-        # self.block_pos = self.situation['block_pos']
-        self.block_pos = np.random.choice(list(range(8)))
+        self.block_pos = self.situation['block_pos']
+        # self.block_pos = np.random.choice(list(range(8)))
         self.block_angle = BLOCK_TO_ANGLE[self.block_pos]
         self.block_coords = np.array(BLOCK_TO_COORDS[self.block_pos])
         self.task = self.situation['task']
@@ -150,7 +151,7 @@ class Manipulator(gym.Env):
         res = 0
         for i in range(self.num_of_joints-1):
             res += (manipulator_angles[i] - BOUNDS[i][0]) / DEGREES
-            res *= POSITIONS[i]
+            res *= ENC_DEC
         res += (manipulator_angles[-1] - BOUNDS[-1][0]) / DEGREES
         res = res * 2 + grabbed
         return res
@@ -160,9 +161,9 @@ class Manipulator(gym.Env):
         i //= 2
         manipulator_angles = []
         for j in range(self.num_of_joints-1):
-            manipulator_angles.append(BOUNDS[-j-1][0] + (i % POSITIONS[-j-2])*DEGREES)
-            i //= POSITIONS[-j-2]
-        manipulator_angles.append(BOUNDS[0][0] + (i % POSITIONS[0]) * DEGREES)
+            manipulator_angles.append(BOUNDS[-j-1][0] + (i % ENC_DEC)*DEGREES)
+            i //= ENC_DEC
+        manipulator_angles.append(BOUNDS[0][0] + (i % ENC_DEC) * DEGREES)
         manipulator_angles.reverse()
         return manipulator_angles, grabbed
 
@@ -174,8 +175,7 @@ class Manipulator(gym.Env):
     def distance(self, point1, point2):
         return np.linalg.norm(point2 - point1)
 
-    def reward(self, old_d, new_d):
-        # return -5 if old_d - new_d <= 0 else 1
+    def reward(self, new_d):
         return tolerance(new_d, bounds=TOL_BOUNDS, margin=TOL_MARGIN) / 10
 
     def normalize(self, manipulator_angles):
@@ -219,7 +219,7 @@ class Manipulator(gym.Env):
                     manipulator_angles[joint] = manipulator_angles[joint] + DEGREES
                     new_man_pos = self._calculate_hand_pos(manipulator_angles)
                     new_distance = self.distance(new_man_pos, self.block_coords)
-                    reward = self.reward(old_distance, new_distance)
+                    reward = self.reward(new_distance)
             else:  # CCW
                 if manipulator_angles[joint] - DEGREES < BOUNDS[joint][0]:
                     reward = self.illegal_action_reward
@@ -227,14 +227,16 @@ class Manipulator(gym.Env):
                     manipulator_angles[joint] = manipulator_angles[joint] - DEGREES
                     new_man_pos = self._calculate_hand_pos(manipulator_angles)
                     new_distance = self.distance(new_man_pos, self.block_coords)
-                    reward = self.reward(old_distance, new_distance)
+                    reward = self.reward(new_distance)
         elif action == self.num_of_joints * 2:  # grab
             if grabbed or self.task != 'grab' or old_distance > 0.2:
                 reward = self.illegal_action_reward
             else:
+                # TODO: to lift or not to lift the block?
                 reward = self.nice_action_reward
                 grabbed = True
                 self.done = True
+                self.state = self._encode(manipulator_angles, grabbed)
                 if return_all:
                     return np.append(np.array(self.normalize(manipulator_angles) + [grabbed]), self._norm_pos()), \
                            self.goal_reward, self.done, None
@@ -246,6 +248,7 @@ class Manipulator(gym.Env):
                 reward = self.nice_action_reward
                 grabbed = False
                 self.done = True
+                self.state = self._encode(manipulator_angles, grabbed)
                 if return_all:
                     return np.append(np.array(self.normalize(manipulator_angles) + [grabbed]), self._norm_pos()), \
                            self.goal_reward, self.done, None
@@ -267,7 +270,7 @@ class Manipulator(gym.Env):
     def render(self, **kwargs):
         pass
 
-    def build_policy_to_goal(self, policy, verbose=False, movement=False, save_path=None):
+    def build_policy_to_goal(self, policy):
         if policy is None:
             raise AttributeError
         curr_state = self.starting_state

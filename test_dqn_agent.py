@@ -35,23 +35,24 @@ def dqn_train(agent, env, n_episodes=1000, max_t=1000, eps_start=0.3, eps_end=0.
         scores_window.append(score)  # save most recent score
         scores.append(score)  # save most recent score
         eps = max(eps_end, eps_decay * eps)  # decrease epsilon
-        print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)), end="")
+        print('\rEpisode {}\tScore: {:.2f}\tAverage Score: {:.2f}'.format(i_episode, score, np.mean(scores_window)), end="")
         if i_episode % 100 == 0:
             print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_window)))
-        if np.mean(scores_window) >= -500:
-            print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(100,
+        if np.mean(scores_window) >= 40:
+            print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode,
                                                                                          np.mean(scores_window)))
-            torch.save(agent.qnetwork_local.state_dict(), 'agents/dqn/models/model.pth')
-            # state = env.reset(return_all=True)
-            # for t in range(max_t):
-            #     print(state[:4])
-            #     action = agent.act(np.array(state), 0)
-            #     next_state, reward, done, _ = env.step(action, return_all=True)
-            #     agent.step(state, action, reward, next_state, done)
-            #     state = next_state
-            #     score += reward
-            #     if done:
-            #         break
+            torch.save(agent.qnetwork_local.state_dict(), 'agents/dqn/models/model1.pth')
+            state = env.reset(return_all=True)
+            print(state[:4])
+            for t in range(max_t):
+                action = agent.act(np.array(state), 0)
+                next_state, reward, done, _ = env.step(action, return_all=True)
+                # agent.step(state, action, reward, next_state, done)
+                state = next_state
+                print(state[:4])
+                score += reward
+                if done:
+                    break
             break
     return scores
 
@@ -63,10 +64,10 @@ def train(parameters):
     epsilon = parameters['epsilon']
     env_name = "Manipulator-v1"
     situation = {
-        'manipulator_angles': [0, 0, 0],
-        'grabbed': False,
-        'block_pos': 6,
-        'task': 'grab'
+        'manipulator_angles': [135, 135, 90],
+        'grabbed': True,
+        'block_pos': 2,
+        'task': 'release'
     }
     env = gym.make(env_name, situation=situation)
     agent = DQNAgent(env.num_of_joints+1+1, env.action_space.n, seed=0)
