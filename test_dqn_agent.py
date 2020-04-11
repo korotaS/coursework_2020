@@ -64,8 +64,8 @@ def train(parameters):
     epsilon = parameters['epsilon']
     env_name = "Manipulator-v1"
     situation = {
-        'manipulator_angles': [135, 135, 90],
-        'grabbed': True,
+        'manipulator_angles': [45, 45, -90],
+        'grabbed': False,
         'block_pos': 2,
         'task': 'release'
     }
