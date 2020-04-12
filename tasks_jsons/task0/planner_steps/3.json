@@ -1,0 +1,203 @@
+{
+    "map": {
+        "wall": [
+            [
+                -20,
+                -20,
+                250,
+                -20
+            ],
+            [
+                -20,
+                -20,
+                -20,
+                250
+            ],
+            [
+                -20,
+                250,
+                250,
+                250
+            ],
+            [
+                250,
+                -20,
+                250,
+                250
+            ]
+        ],
+        "map-size": [
+            250,
+            250
+        ]
+    },
+    "global-start": {
+        "ag1": {
+            "orientation": "below-right",
+            "activity": 4,
+            "cl_lv_init": 0,
+            "cl_lv_goal": 2,
+            "holding": {
+                "cause": [
+                    "ag1",
+                    "block-b"
+                ],
+                "effect": []
+            }
+        },
+        "objects": {
+            "ag1": {
+                "r": 5,
+                "x": 97.0,
+                "y": 97.0
+            },
+            "block-a": {
+                "r": 1,
+                "x": 125.0,
+                "y": 125.0
+            },
+            "block-c": {
+                "r": 1,
+                "x": 125.0,
+                "y": 122.0
+            }
+        },
+        "conditions": {
+            "blocktype-1": {
+                "cause": [
+                    "big",
+                    "block-a"
+                ],
+                "effect": []
+            },
+            "blocktype-3": {
+                "cause": [
+                    "big",
+                    "block-c"
+                ],
+                "effect": []
+            },
+            "blocktype-2": {
+                "cause": [
+                    "big",
+                    "block-b"
+                ],
+                "effect": []
+            },
+            "clear-1": {
+                "cause": [
+                    "block-a"
+                ],
+                "effect": []
+            },
+            "clear-3": {
+                "cause": [
+                    "block-c"
+                ],
+                "effect": []
+            },
+            "onground-1": {
+                "cause": [
+                    "block-a"
+                ],
+                "effect": []
+            },
+            "onground-3": {
+                "cause": [
+                    "block-c"
+                ],
+                "effect": []
+            }
+        },
+        "cl_lv": 1
+    },
+    "global-finish": {
+        "ag1": {
+            "orientation": "below-right",
+            "activity": 4,
+            "cl_lv_init": 0,
+            "cl_lv_goal": 2,
+            "handempty": {
+                "cause": [],
+                "effect": []
+            }
+        },
+        "objects": {
+            "ag1": {
+                "r": 5,
+                "x": 97.0,
+                "y": 97.0
+            },
+            "block-a": {
+                "r": 1,
+                "x": 125.0,
+                "y": 125.0
+            },
+            "block-c": {
+                "r": 1,
+                "x": 125.0,
+                "y": 122.0
+            },
+            "block-b": {
+                "x": 125.0,
+                "y": 125.0,
+                "r": 1
+            }
+        },
+        "conditions": {
+            "blocktype-1": {
+                "cause": [
+                    "big",
+                    "block-a"
+                ],
+                "effect": []
+            },
+            "blocktype-3": {
+                "cause": [
+                    "big",
+                    "block-c"
+                ],
+                "effect": []
+            },
+            "blocktype-2": {
+                "cause": [
+                    "big",
+                    "block-b"
+                ],
+                "effect": []
+            },
+            "clear-3": {
+                "cause": [
+                    "block-c"
+                ],
+                "effect": []
+            },
+            "onground-1": {
+                "cause": [
+                    "block-a"
+                ],
+                "effect": []
+            },
+            "onground-3": {
+                "cause": [
+                    "block-c"
+                ],
+                "effect": []
+            },
+            "clear-2": {
+                "cause": [
+                    "block-b"
+                ],
+                "effect": []
+            },
+            "on-2": {
+                "cause": [
+                    "block-b",
+                    "block-a"
+                ],
+                "effect": []
+            }
+        },
+        "cl_lv": 1
+    }
+}
