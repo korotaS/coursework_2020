@@ -5,12 +5,12 @@ from gym.utils import seeding
 from agents.dqn.rewards import tolerance
 
 
-DEGREES = 15
-# ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', '4CW', '4CCW', 'grab', 'release']
-ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', 'grab', 'release']
-LENGTHS = [0, 1.5, 1.5]
-BOUNDS = [[0, 359], [0, 150], [-120, 120]]
-POSITIONS = [24, 11, 19]
+DEGREES = 30
+ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', '4CW', '4CCW', 'grab', 'release']
+# ACTIONS = ['1CW', '1CCW', '2CW', '2CCW', '3CW', '3CCW', 'grab', 'release']
+LENGTHS = [0, 1.5, 1.5, 1.5]
+BOUNDS = [[0, 359], [0, 150], [-120, 120], [-120, 120]]
+POSITIONS = [24, 11, 19, 19]
 ENC_DEC = max(POSITIONS)
 TOL_BOUNDS = (0, 0.2)
 TOL_MARGIN = 2
@@ -203,7 +203,7 @@ class Manipulator(gym.Env):
         old_man_coords = self._calculate_hand_pos(manipulator_angles)
         old_distance = self.distance(old_man_coords, self.block_coords)
         if (self.task == 'grab' and grabbed or self.task == 'release' and not grabbed) and \
-                self.distance(old_man_coords, self.goal_man_coords) < 0.2:
+                self.distance(old_man_coords, self.goal_man_coords) < 0.5:
             self.done = True
             if return_all:
                 return np.append(np.array(self.normalize(manipulator_angles) + [grabbed]), self._norm_pos()), \
@@ -229,10 +229,9 @@ class Manipulator(gym.Env):
                     new_distance = self.distance(new_man_pos, self.block_coords)
                     reward = self.reward(new_distance)
         elif action == self.num_of_joints * 2:  # grab
-            if grabbed or self.task != 'grab' or old_distance > 0.2:
+            if grabbed or self.task != 'grab' or old_distance > 0.5:
                 reward = self.illegal_action_reward
             else:
-                # TODO: to lift or not to lift the block?
                 reward = self.nice_action_reward
                 grabbed = True
                 self.done = True
@@ -242,7 +241,7 @@ class Manipulator(gym.Env):
                            self.goal_reward, self.done, None
                 return self.state, self.goal_reward, self.done, None
         elif action == self.num_of_joints * 2 + 1:  # release
-            if not grabbed or self.task != 'release' or old_distance > 0.2:
+            if not grabbed or self.task != 'release' or old_distance > 0.5:
                 reward = self.illegal_action_reward
             else:
                 reward = self.nice_action_reward

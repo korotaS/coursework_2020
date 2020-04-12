@@ -31,7 +31,7 @@ def train_rl(parameters):
         raise FileNotFoundError
     env = gym.make(env_name, map_dict=map_dict)
     agent = QLearningAgent(env, gamma=gamma, alpha=alpha, epsilon=epsilon)
-    average_eps_reward, all_rewards = agent.train(num_episodes, False)
+    average_eps_reward, all_rewards, average_rewards = agent.train(num_episodes, True)
     policy = q_to_policy(agent.q)
     if parameters['plot']:
         env.render(policy=policy)
@@ -43,7 +43,7 @@ def train_rl(parameters):
                                                save_path=parameters['save_path'])
     env.close()
     print(parameters['bench'], ' done!')
-    return average_eps_reward
+    return average_rewards
 
 
 def q_to_policy(q, offset=0):
@@ -160,25 +160,25 @@ def main():
     create_dir(manipulator_situations_solved_path)
 
     # planner creates high-level steps
-    # train_planner(task_num)
-    # print('PLANNER FINISHED, PARSING TO RL STARTED')
-    #
-    # # parse high-level step representations to rl env-friendly
-    # parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
-    # print('PARSING TO RL FINISHED, RL LEARNING STARTED')
-    #
-    # parsed_tasks_len = len(os.listdir(planner_steps_parsed_path))
-    # tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
-    #                for i in range(parsed_tasks_len)]
-    # parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
-    #               'verbose': False, 'plot': False, 'movement': False, 'bench': '',
-    #               'save_path': rl_agent_steps_path}
-    #
-    # # rl agent trains to decompose high-level tasks into atomic steps
-    # train_rl_multiple_files(tasks_files, parameters)
-    #
-    # # find 'pick up' and 'put down' actions and parse them into manipulator env-friendly
-    # extract_situations(rl_agent_steps_path, manipulator_situations_path)
+    train_planner(task_num)
+    print('PLANNER FINISHED, PARSING TO RL STARTED')
+
+    # parse high-level step representations to rl env-friendly
+    parse(planner_steps_path, planner_steps_parsed_path, multiple=True, window_size=20)
+    print('PARSING TO RL FINISHED, RL LEARNING STARTED')
+
+    parsed_tasks_len = len(os.listdir(planner_steps_parsed_path))
+    tasks_files = [planner_steps_parsed_path + f'parsed_tasks_{i}.json'
+                   for i in range(parsed_tasks_len)]
+    parameters = {'episodes': 1000, 'gamma': 0.99, 'alpha': 0.6, 'epsilon': 0.2,
+                  'verbose': False, 'plot': False, 'movement': False, 'bench': '',
+                  'save_path': rl_agent_steps_path}
+
+    # rl agent trains to decompose high-level tasks into atomic steps
+    train_rl_multiple_files(tasks_files, parameters)
+
+    # find 'pick up' and 'put down' actions and parse them into manipulator env-friendly
+    extract_situations(rl_agent_steps_path, manipulator_situations_path)
 
     # apply pretrained manipulator model to generate sequence of joint rotations and grabs
     apply_manipulator_model(manipulator_situations_path, manipulator_situations_solved_path)
