@@ -12,9 +12,7 @@ import torch
 from agents.qlearning.qlearning_agent import QLearningAgent
 from agents.dqn.dqn_agent import Agent as DQNAgent
 from map_spatial_wrapper.test2 import main as planner_main
-import envs.blocks
-import envs.manipulator
-from planner_parser import parse
+from utils.planner_parser import parse
 
 
 def train_rl(parameters):
